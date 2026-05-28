@@ -5,10 +5,45 @@
 
 import SwiftUI
 
+enum AppTab: String, CaseIterable {
+    case allTasks
+    case myTasks
+    case settings
+
+    var title: String {
+        switch self {
+        case .allTasks:
+            return "All Tasks"
+        case .myTasks:
+            return "My Tasks"
+        case .settings:
+            return "Settings"
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .allTasks:
+            return "calendar"
+        case .myTasks:
+            return "person.crop.circle.badge.checkmark"
+        case .settings:
+            return "gearshape"
+        }
+    }
+}
+
 struct ContentView: View {
+    @State private var selectedTab: AppTab = .allTasks
+
     var body: some View {
-        TabView {
-            Tab("All Tasks", systemImage: "calendar") {
+        TabView(selection: $selectedTab) {
+
+            Tab(
+                AppTab.allTasks.title,
+                systemImage: AppTab.allTasks.icon,
+                value: AppTab.allTasks
+            ) {
                 NavigationStack {
                     ContentUnavailableView(
                         "All Tasks",
@@ -19,7 +54,11 @@ struct ContentView: View {
                 }
             }
 
-            Tab("My Tasks", systemImage: "person.crop.circle.badge.checkmark") {
+            Tab(
+                AppTab.myTasks.title,
+                systemImage: AppTab.myTasks.icon,
+                value: AppTab.myTasks
+            ) {
                 NavigationStack {
                     ContentUnavailableView(
                         "My Tasks",
@@ -30,7 +69,11 @@ struct ContentView: View {
                 }
             }
 
-            Tab("Settings", systemImage: "gearshape") {
+            Tab(
+                AppTab.settings.title,
+                systemImage: AppTab.settings.icon,
+                value: AppTab.settings
+            ) {
                 NavigationStack {
                     SettingsRootView()
                 }
