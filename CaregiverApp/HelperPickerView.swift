@@ -2,17 +2,39 @@
 //  HelperPickerView.swift
 //  CaregiverApp
 //
-//  Created by Christopher Jonathan on 28/05/26.
-//
 
 import SwiftUI
 
 struct HelperPickerView: View {
-    var body: some View {
-        Text(/*@START_MENU_TOKEN@*/"Hello, World!"/*@END_MENU_TOKEN@*/)
-    }
-}
 
-#Preview {
-    HelperPickerView()
+    @Environment(\.dismiss) private var dismiss
+
+    let availableHelpers: [Helper]
+
+    let onSelect: (Helper) -> Void
+
+    var body: some View {
+        NavigationStack {
+
+            List(availableHelpers) { helper in
+
+                Button {
+                    onSelect(helper)
+                    dismiss()
+                } label: {
+                    VStack(alignment: .leading) {
+
+                        Text(helper.name)
+
+                        Text(helper.phoneNumber)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+            .navigationTitle("Select Helper")
+        }
+
+    }
+
 }
