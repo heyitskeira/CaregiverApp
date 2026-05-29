@@ -47,12 +47,7 @@ struct ContentView: View {
                     }
                 case .details:
                     NavigationStack {
-                        ContentUnavailableView(
-                            "Details",
-                            systemImage: "stethoscope",
-                            description: Text("Details will appear here.")
-                        )
-                        .navigationTitle("Details")
+                        PatientDetailsTabView()
                     }
                 case .settings:
                     NavigationStack {

@@ -16,14 +16,6 @@ enum RepeatOption: String, CaseIterable {
     case custom = "Custom"
 }
 
-struct Helper: Identifiable {
-    let id = UUID()
-
-    let name: String
-    let phoneNumber: String
-    let role: String
-}
-
 enum RepeatUnit: String, CaseIterable {
     case days = "Days"
     case weeks = "Weeks"
@@ -33,27 +25,7 @@ enum RepeatUnit: String, CaseIterable {
 
 struct TaskSheetView: View {
     
-    //Assign
-    @State private var assignedHelpers: [Helper] = []
-
-    private let availableHelpers: [Helper] = [
-        Helper(
-            name: "Sarah Johnson",
-            phoneNumber: "+1 (555) 123-4567",
-            role: "Primary Caregiver"
-        ),
-        Helper(
-            name: "Michael Johnson",
-            phoneNumber: "+1 (555) 987-6543",
-            role: "Substitute Helper"
-        ),
-        Helper(
-            name: "Emma Johnson",
-            phoneNumber: "+1 (555) 246-8100",
-            role: "Backup"
-        )
-    ]
-        
+    @State private var assignedContacts: [CareContact] = []
     @State private var showingHelperPicker = false
     
     @Environment(\.dismiss) private var dismiss
@@ -93,33 +65,33 @@ struct TaskSheetView: View {
                 
                 //Assign People
                 Section("Assign") {
-                    ForEach(assignedHelpers, id: \.phoneNumber) { helper in
-                        HStack {
-                            Image(systemName: "person.crop.circle.fill")
-                                .font(.system(size: 40))
+                    ForEach(assignedContacts) { contact in
+                        HStack(spacing: 12) {
+                            ContactAvatarView(contact: contact, size: 40)
 
-                            VStack(alignment: .leading) {
-                                Text(helper.name)
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(contact.name)
 
-                                Text(helper.phoneNumber)
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-
-                                Text(helper.role)
-                                    .font(.caption2)
-                                    .foregroundStyle(.blue)
-                            }
-                            
-                            Spacer()
-                            
-                            Button {
-                                    assignedHelpers.removeAll {
-                                        $0.phoneNumber == helper.phoneNumber
-                                    }
-                                } label: {
-                                    Image(systemName: "minus.circle.fill")
-                                        .foregroundStyle(.red)
+                                if !contact.phone.isEmpty {
+                                    Text(contact.phone)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
                                 }
+
+                                Text(contact.relationship)
+                                    .font(.caption2)
+                                    .foregroundStyle(.tint)
+                            }
+
+                            Spacer()
+
+                            Button {
+                                assignedContacts.removeAll { $0.id == contact.id }
+                            } label: {
+                                Image(systemName: "minus.circle.fill")
+                                    .foregroundStyle(.red)
+                            }
+                            .accessibilityLabel("Remove \(contact.name)")
                         }
                     }
                     Button {
@@ -226,12 +198,10 @@ struct TaskSheetView: View {
         }
         .sheet(isPresented: $showingHelperPicker) {
             HelperPickerView(
-                availableHelpers: availableHelpers
-            ) { helper in
-                if !assignedHelpers.contains(where: {
-                    $0.phoneNumber == helper.phoneNumber
-                }) {
-                    assignedHelpers.append(helper)
+                excludedContactIDs: Set(assignedContacts.map(\.id))
+            ) { contact in
+                if !assignedContacts.contains(where: { $0.id == contact.id }) {
+                    assignedContacts.append(contact)
                 }
             }
         }
@@ -250,4 +220,5 @@ struct TaskSheetView: View {
 
 #Preview {
     TaskSheetView()
+        .environment(\.contactRepository, AppDependencies.live.contactRepository)
 }

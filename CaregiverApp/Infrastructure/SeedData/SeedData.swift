@@ -15,7 +15,7 @@ enum SeedData {
         bloodType: "O+",
         allergies: "Penicillin",
         favoriteFood: "Pizza",
-        healthNotes: "Regular check-ups every two months."
+        healthNotes: "Has had cancer for about a year; regular check-ups every two months."
     )
 
     static let contacts: [CareContact] = [

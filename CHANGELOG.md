@@ -20,3 +20,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - Add Member now opens the system Contacts picker (`CNContactPickerViewController`) instead of a blank manual form
 - Imported contacts are pre-filled; user confirms relationship and saves
+- `HelperPickerView` loads assignees from `ContactRepository` (care group contacts) instead of hardcoded helpers
+- `TaskSheetView` uses `CareContact` for assigned helpers, shared with Settings care group data
+- Care Group section: Add Member opens Contacts picker in place; View All navigates to full list
+- Details tab shows patient health profile (Grandma Marie) from `PatientRepository`
+- Fixed double chevron on Care Group list rows

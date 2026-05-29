@@ -2,77 +2,126 @@
 //  PatientdetailView.swift
 //  CaregiverApp
 //
-//  Created by Keira on 28/05/26.
-//
 
 import SwiftUI
 
 struct PatientdetailView: View {
-    @Environment(\.patientRepository) private var patientRepository
-    @State var patientdetail: CareRecipient
-    
-    var body: some View {
-        VStack {
-            HStack{
-                Text("Patient")
-                    .font(.largeTitle)
-                    .bold()
-                    .padding(2)
-                
-                Spacer()
-                    
-                    
-            }
-            ZStack{
-                RoundedRectangle(cornerRadius: 10)
-                    .frame(width: 370, height: 100)
-                    .foregroundColor(.accentColor.opacity(0.15))
-                    .padding(10)
-                
-                HStack{
-                    Image("profile1")
-                        .resizable()
-                        .frame(width: 80, height: 80, alignment: .leading)
-                        .clipShape(Circle())
-                        .shadow(radius: 10)
-                        .padding(.trailing, 10)
-                    VStack (alignment: .leading){
-                        Text(patientdetail.name)
-                            .fontWeight(.bold)
-                        Text( "\(patientdetail.ageInYears) years old")
-                            .font(.caption)
+    let patientdetail: CareRecipient
 
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                patientHeaderCard
+
+                VStack(alignment: .leading, spacing: 8) {
+                    sectionHeader("Basic Information")
+                    infoCard {
+                        PatientDetailList(
+                            menuName: "Date of Birth",
+                            menuImage: "calendar",
+                            menuData: patientdetail.dateOfBirthString
+                        )
+                        Divider().padding(.leading, 28)
+                        PatientDetailList(
+                            menuName: "Gender",
+                            menuImage: "figure.stand",
+                            menuData: patientdetail.gender
+                        )
+                        Divider().padding(.leading, 28)
+                        PatientDetailList(
+                            menuName: "Blood Type",
+                            menuImage: "drop.fill",
+                            menuData: patientdetail.bloodType
+                        )
                     }
-                    Spacer()
                 }
-                .padding(20)
-            }
-            
-            List{
-                Section(header: Text("Basic Information").font(.system(size: 14, weight: .bold)).foregroundStyle(Color.black)){
-                    PatientDetailList(menuName: "Date of Birth", menuImage: "calendar", menuData: patientdetail.dateOfBirthString)
-                    PatientDetailList(menuName: "Gender", menuImage: "figure.stand.dress.line.vertical.figure", menuData: patientdetail.gender)
-                    PatientDetailList(menuName: "Blood Type", menuImage: "drop", menuData: patientdetail.bloodType)
-                }
-                
-                Section(header: Text("Health Information").font(.system(size: 14, weight: .bold)).foregroundStyle(Color.black)){
-                    PatientDetailList(menuName: "Allergies", menuImage: "exclamationmark.square.fill", menuData: patientdetail.allergies)
-                    PatientDetailList(menuName: "Favorite Food", menuImage: "fork.knife", menuData: patientdetail.favoriteFood)
-                    VStack (alignment: .leading){
-                        PatientDetailList(menuName: "Health Profile", menuImage: "text.document", menuData: "")
-                        Text(patientdetail.healthNotes)
-                            .font(.system(size: 12))
-                            .foregroundStyle(Color.secondary)
+
+                VStack(alignment: .leading, spacing: 8) {
+                    sectionHeader("Health Information")
+                    infoCard {
+                        PatientDetailList(
+                            menuName: "Allergies",
+                            menuImage: "bandage.fill",
+                            menuData: patientdetail.allergies.isEmpty ? "None listed" : patientdetail.allergies
+                        )
+                        Divider().padding(.leading, 28)
+                        PatientDetailList(
+                            menuName: "Favorite Food",
+                            menuImage: "fork.knife",
+                            menuData: patientdetail.favoriteFood.isEmpty ? "—" : patientdetail.favoriteFood
+                        )
+                        Divider().padding(.leading, 28)
+                        VStack(alignment: .leading, spacing: 8) {
+                            PatientDetailList(
+                                menuName: "Health Profile",
+                                menuImage: "doc.text.fill",
+                                menuData: ""
+                            )
+                            Text(patientdetail.healthNotes)
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                                .padding(.leading, 28)
+                        }
+                        .padding(.bottom, 4)
                     }
                 }
             }
-//            .scrollContentBackground(.hidden)
+            .padding()
+        }
+        .background(Color(.systemGroupedBackground))
+    }
+
+    private var patientHeaderCard: some View {
+        HStack(spacing: 16) {
+            ZStack {
+                Circle()
+                    .fill(Color(.secondarySystemBackground))
+                    .frame(width: 80, height: 80)
+                Image(systemName: "person.crop.circle.fill")
+                    .font(.system(size: 44))
+                    .foregroundStyle(.secondary)
+            }
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text(patientdetail.name)
+                    .font(.title2.weight(.semibold))
+                Text("\(patientdetail.ageInYears) years old")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                Text("Care recipient")
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(.tint)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
+                    .background(Capsule().fill(Color.accentColor.opacity(0.15)))
+            }
+
+            Spacer(minLength: 0)
         }
         .padding()
+        .background(Color(.secondarySystemGroupedBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+
+    private func sectionHeader(_ title: String) -> some View {
+        Text(title)
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(.secondary)
+            .textCase(.uppercase)
+    }
+
+    private func infoCard<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        VStack(spacing: 0) {
+            content()
+        }
+        .padding()
+        .background(Color(.secondarySystemGroupedBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 }
 
-
 #Preview {
-    PatientdetailView(patientdetail: SeedData.patient)
+    NavigationStack {
+        PatientdetailView(patientdetail: SeedData.patient)
+    }
 }

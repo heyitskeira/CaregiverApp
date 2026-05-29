@@ -1,60 +1,70 @@
 import SwiftUI
 
-/// Temporary settings shell until the Settings feature owner integrates the full screen.
 struct SettingsRootView: View {
     var body: some View {
-        NavigationStack{
-            HStack{
-                Image("profile1")
-                    .resizable()
-                    .frame(width: 100, height: 100, alignment: .leading)
-                    .clipShape(Circle())
-                    .shadow(radius: 10)
-                    .padding(.trailing, 15)
-                    .padding(.bottom, 15)
-                
-                VStack(alignment: .leading){
-                    Text("Sarah Sechan")
-                        .bold()
-                    Text("primary caregiver")
-                        .fixedSize(horizontal: true, vertical: true)
-                        .background(Capsule().fill(Color.green.opacity(0.7)).frame(height: 22))
-                    HStack{
-                        Image(systemName: "phone")
-                        Text ("+628123456789")
-                    }
-                }
-                
-                Spacer()
+        List {
+            Section {
+                profileHeader
             }
-            .padding(.leading, 20)
-            
-            List {
-                CareGroupSection()
-                
-                NavigationLink(destination:
-                                PatientdetailView(patientdetail: SeedData.patient)){
-                    Text("View Patient")
+            .listRowBackground(Color.clear)
+            .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+
+            CareGroupSection()
+
+            Section(header: Text("Preferences")) {
+                NavigationLink {
+                    NotifsettingView()
+                } label: {
+                    PreferenceList(menuImage: "bell", menuName: "Notification Presferences")
                 }
-                
-                Section(header: Text("Preferences")){
-                    NavigationLink(destination:             NotifsettingView()){
-                        PreferenceList(menuImage: "bell", menuName: "Notification Presferences")
-                    }
-                    NavigationLink(destination:
-                                    LangsettingView()){
-                        PreferenceList(menuImage: "globe", menuName: "Language")}
-                    NavigationLink(destination:
-                                    PnSsetting()){
-                        PreferenceList(menuImage: "lock", menuName: "Privacy & Security")}
+                NavigationLink {
+                    LangsettingView()
+                } label: {
+                    PreferenceList(menuImage: "globe", menuName: "Language")
                 }
-                
+                NavigationLink {
+                    PnSsetting()
+                } label: {
+                    PreferenceList(menuImage: "lock", menuName: "Privacy & Security")
+                }
             }
         }
-        
+        .listStyle(.insetGrouped)
+        .navigationTitle("Settings")
+        .navigationBarTitleDisplayMode(.large)
+    }
+
+    private var profileHeader: some View {
+        HStack(spacing: 16) {
+            Image("profile1")
+                .resizable()
+                .scaledToFill()
+                .frame(width: 88, height: 88)
+                .clipShape(Circle())
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Sarah Sechan")
+                    .font(.title3.weight(.semibold))
+
+                Text("Primary Caregiver")
+                    .font(.caption.weight(.medium))
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
+                    .background(Capsule().fill(Color.green.opacity(0.25)))
+
+                Label("+628123456789", systemImage: "phone.fill")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer(minLength: 0)
+        }
     }
 }
 
 #Preview {
-    SettingsRootView()
+    NavigationStack {
+        SettingsRootView()
+    }
+    .environment(\.contactRepository, AppDependencies.live.contactRepository)
 }
