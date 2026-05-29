@@ -31,9 +31,55 @@ enum RepeatUnit: String, CaseIterable {
     case years = "Years"
 }
 
+enum TaskSheetMode {
+    case create
+    case view(TimelineTaskModel)
+    case edit(TimelineTaskModel)
+}
+
 struct TaskSheetView: View {
-    
-    //Assign
+
+    var mode: TaskSheetMode
+    var onSave: ((TimelineTaskModel) -> Void)?
+    var onUpdate: ((TimelineTaskModel) -> Void)?
+
+    init(
+        mode: TaskSheetMode = .create,
+        onSave: ((TimelineTaskModel) -> Void)? = nil,
+        onUpdate: ((TimelineTaskModel) -> Void)? = nil
+    ) {
+        self.mode = mode
+        self.onSave = onSave
+        self.onUpdate = onUpdate
+
+        switch mode {
+        case .create:
+            _taskName = State(initialValue: "")
+            _taskNote = State(initialValue: "")
+            _taskDate = State(initialValue: Date())
+            _taskEndDate = State(initialValue: Calendar.current.date(byAdding: .minute, value: 30, to: Date()) ?? Date())
+            _repeatOption = State(initialValue: .none)
+            _isEditing = State(initialValue: true)
+            _editingTaskId = State(initialValue: nil)
+        case .view(let task):
+            _taskName = State(initialValue: task.title)
+            _taskNote = State(initialValue: task.taskNote)
+            _taskDate = State(initialValue: task.startDate)
+            _taskEndDate = State(initialValue: task.endDate)
+            _repeatOption = State(initialValue: task.repeatOption)
+            _isEditing = State(initialValue: false)
+            _editingTaskId = State(initialValue: task.id)
+        case .edit(let task):
+            _taskName = State(initialValue: task.title)
+            _taskNote = State(initialValue: task.taskNote)
+            _taskDate = State(initialValue: task.startDate)
+            _taskEndDate = State(initialValue: task.endDate)
+            _repeatOption = State(initialValue: task.repeatOption)
+            _isEditing = State(initialValue: true)
+            _editingTaskId = State(initialValue: task.id)
+        }
+    }
+
     @State private var assignedHelpers: [Helper] = []
 
     private let availableHelpers: [Helper] = [
@@ -53,45 +99,52 @@ struct TaskSheetView: View {
             role: "Backup"
         )
     ]
-        
+
     @State private var showingHelperPicker = false
-    
+
     @Environment(\.dismiss) private var dismiss
-    
-    //Task Title
-    @State private var taskName: String = ""
-    @State private var taskNote: String = ""
-    
-    //Task Date
-    @State private var taskDate = Date()
-    
-    //Task Repitition
-    @State private var repeatOption: RepeatOption = .none
+
+    @State private var taskName: String
+    @State private var taskNote: String
+
+    @State private var taskDate: Date
+    @State private var taskEndDate: Date
+
+    @State private var repeatOption: RepeatOption
 
     @State private var showingCustomRepeat = false
 
     @State private var repeatInterval = 1
 
     @State private var repeatUnit: RepeatUnit = .weeks
-    
+
+    @State private var isEditing: Bool
+    @State private var editingTaskId: UUID?
+
+    private var isCreateMode: Bool {
+        if case .create = mode { return true }
+        return false
+    }
+
     private var customRepeatText: String {
         "Every \(repeatInterval) \(repeatUnit.rawValue)"
     }
-    
+
     var body: some View {
-        NavigationStack{
-            Form{
-                //Text Field for Task Name
+        NavigationStack {
+            Form {
                 Section("Task Name") {
-                    TextField(
-                        "e.g., Change poopie pants",
-                        text: $taskName
-                    )
+                    if isEditing {
+                        TextField(
+                            "e.g., Change poopie pants",
+                            text: $taskName
+                        )
+                    } else {
+                        Text(taskName)
+                            .foregroundStyle(.primary)
+                    }
                 }
-                
-                //Per View would have a Title, then the Main Function
-                
-                //Assign People
+
                 Section("Assign") {
                     ForEach(assignedHelpers, id: \.phoneNumber) { helper in
                         HStack {
@@ -109,10 +162,11 @@ struct TaskSheetView: View {
                                     .font(.caption2)
                                     .foregroundStyle(.blue)
                             }
-                            
+
                             Spacer()
-                            
-                            Button {
+
+                            if isEditing {
+                                Button {
                                     assignedHelpers.removeAll {
                                         $0.phoneNumber == helper.phoneNumber
                                     }
@@ -120,107 +174,152 @@ struct TaskSheetView: View {
                                     Image(systemName: "minus.circle.fill")
                                         .foregroundStyle(.red)
                                 }
+                            }
                         }
                     }
-                    Button {
-                        showingHelperPicker = true
-                    } label: {
-                        Label("Add Helper", systemImage: "plus.circle.fill")
+                    if isEditing {
+                        Button {
+                            showingHelperPicker = true
+                        } label: {
+                            Label("Add Helper", systemImage: "plus.circle.fill")
+                        }
                     }
                 }
-                
-                //Date & Time
-                Section("Schedule"){
-                    DatePicker(
-                        "Pick a Date",
-                        selection: $taskDate,
-                        displayedComponents: .date
-                    )
-                    .datePickerStyle(.compact)
-                    
-                    DatePicker(
-                        "Time",
-                        selection: $taskDate,
-                        displayedComponents: .hourAndMinute
-                    )
-                    .datePickerStyle(.wheel)
-                    .frame(height: 120)
+
+                Section("Schedule") {
+                    if isEditing {
+                        DatePicker(
+                            "Start",
+                            selection: $taskDate,
+                            displayedComponents: [.date, .hourAndMinute]
+                        )
+                        .datePickerStyle(.compact)
+
+                        DatePicker(
+                            "End",
+                            selection: $taskEndDate,
+                            in: taskDate...,
+                            displayedComponents: [.date, .hourAndMinute]
+                        )
+                        .datePickerStyle(.compact)
+                    } else {
+                        HStack {
+                            Text("Start")
+                            Spacer()
+                            Text(taskDate.formatted(date: .abbreviated, time: .shortened))
+                                .foregroundStyle(.secondary)
+                        }
+                        HStack {
+                            Text("End")
+                            Spacer()
+                            Text(taskEndDate.formatted(date: .abbreviated, time: .shortened))
+                                .foregroundStyle(.secondary)
+                        }
+                    }
                 }
-                
-                //Reapetition Choice
+
                 Section("Repeat") {
-                    Menu {
-                        ForEach(RepeatOption.allCases.filter { $0 != .custom }  , id: \.self) { option in
-                            Button {
-                                repeatOption = option
-                            } label: {
-                                if repeatOption == option {
-                                    Label(option.rawValue, systemImage: "checkmark")
-                                } else {
-                                    Text(option.rawValue)
+                    if isEditing {
+                        Menu {
+                            ForEach(RepeatOption.allCases.filter { $0 != .custom }, id: \.self) { option in
+                                Button {
+                                    repeatOption = option
+                                } label: {
+                                    if repeatOption == option {
+                                        Label(option.rawValue, systemImage: "checkmark")
+                                    } else {
+                                        Text(option.rawValue)
+                                    }
                                 }
                             }
-                        }
 
-                        Divider()
+                            Divider()
 
-                        Button {
-                            repeatOption = .custom
-                            showingCustomRepeat = true
+                            Button {
+                                repeatOption = .custom
+                                showingCustomRepeat = true
+                            } label: {
+                                if repeatOption == .custom {
+                                    Label("Custom...", systemImage: "checkmark")
+                                } else {
+                                    Text("Custom...")
+                                }
+                            }
                         } label: {
-                            if repeatOption == .custom {
-                                Label("Custom...", systemImage: "checkmark")
-                            } else {
-                                Text("Custom...")
+                            HStack {
+                                Text(
+                                    repeatOption == .custom
+                                    ? customRepeatText
+                                    : repeatOption.rawValue
+                                )
+
+                                Spacer()
+
+                                Image(systemName: "chevron.right")
+                                    .foregroundStyle(.secondary)
                             }
                         }
-                    } label: {
+                    } else {
                         HStack {
+                            Text("Repeat")
+                            Spacer()
                             Text(
                                 repeatOption == .custom
                                 ? customRepeatText
                                 : repeatOption.rawValue
                             )
-                            
-                            Spacer()
-
-                            Image(systemName: "chevron.right")
-                                .foregroundStyle(.secondary)
+                            .foregroundStyle(.secondary)
                         }
                     }
                 }
-                
-                //Text Field for Notes
-                Section("Notes for Helper"){
-                    TextField(
-                        "e.g., Poopie first then pants",
-                        text: $taskNote
-                    )
+
+                Section("Notes for Helper") {
+                    if isEditing {
+                        TextField(
+                            "e.g., Poopie first then pants",
+                            text: $taskNote
+                        )
+                    } else {
+                        Text(taskNote.isEmpty ? "No notes" : taskNote)
+                            .foregroundStyle(taskNote.isEmpty ? .secondary : .primary)
+                    }
                 }
             }
-            //Sticky Title (Task Name)
-            .navigationTitle(
-                taskName.isEmpty
-                ? "New Task"
-                : String(taskName.prefix(25))
-            )
+            .navigationTitle(navigationTitle)
             .navigationBarTitleDisplayMode(.inline)
-            
-            //Cancel & Done Button
-            .toolbar{
+            .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("Cancel") {
-                        dismiss()
+                    Button(isEditing && !isCreateMode ? "Cancel" : "Close") {
+                        if isEditing && !isCreateMode {
+                            if case .view(let task) = mode {
+                                taskName = task.title
+                                taskNote = task.taskNote
+                                taskDate = task.startDate
+                                taskEndDate = task.endDate
+                                repeatOption = task.repeatOption
+                            }
+                            isEditing = false
+                        } else {
+                            dismiss()
+                        }
                     }
                     .foregroundStyle(.blue)
                 }
-                
+
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Save") {
-                        dismiss()
+                    if isEditing {
+                        Button("Save") {
+                            saveTask()
+                        }
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.blue)
+                        .disabled(taskName.trimmingCharacters(in: .whitespaces).isEmpty)
+                    } else {
+                        Button("Edit") {
+                            isEditing = true
+                        }
+                        .foregroundStyle(.blue)
                     }
-                    .fontWeight(.semibold)
-                    .foregroundStyle(.blue)
                 }
             }
         }
@@ -236,15 +335,58 @@ struct TaskSheetView: View {
             }
         }
         .sheet(isPresented: $showingCustomRepeat) {
-
             CustomRepeatView(
                 repeatInterval: $repeatInterval,
                 repeatUnit: $repeatUnit
             )
-
         }
     }
-    
+
+    private var navigationTitle: String {
+        if isCreateMode {
+            return taskName.isEmpty ? "New Task" : String(taskName.prefix(25))
+        } else {
+            return String(taskName.prefix(25))
+        }
+    }
+
+    private func saveTask() {
+        if isCreateMode {
+            let initials = assignedHelpers.first.map { helper in
+                let parts = helper.name.split(separator: " ")
+                return parts.map { String($0.prefix(1)) }.joined()
+            } ?? "AA"
+
+            let newTask = TimelineTaskModel(
+                startDate: taskDate,
+                endDate: taskEndDate,
+                title: taskName,
+                initials: initials,
+                hasRepeatIcon: repeatOption != .none,
+                state: .assigned,
+                taskNote: taskNote,
+                repeatOption: repeatOption
+            )
+            onSave?(newTask)
+        } else if let taskId = editingTaskId {
+            var updated = TimelineTaskModel(
+                id: taskId,
+                startDate: taskDate,
+                endDate: taskEndDate,
+                title: taskName,
+                hasRepeatIcon: repeatOption != .none,
+                state: .assigned,
+                taskNote: taskNote,
+                repeatOption: repeatOption
+            )
+            if let firstHelper = assignedHelpers.first {
+                let parts = firstHelper.name.split(separator: " ")
+                updated.initials = parts.map { String($0.prefix(1)) }.joined()
+            }
+            onUpdate?(updated)
+        }
+        dismiss()
+    }
 }
 
 
