@@ -1,155 +1,235 @@
 import SwiftUI
+import Combine
+
+enum TimelineFilter {
+    case all
+    case mine
+}
 
 struct TimelineView: View {
-    @State private var selectedTab = 0
-    
-    let allTasks: [TimelineTaskModel] = [
-        TimelineTaskModel(startTime: "05.00", endTime: "05.30", duration: "30 min", title: "Prep", initials: "AA", isCompleted: true, hasRepeatIcon: true, color: .red.opacity(0.9), iconSystemName: nil),
-        TimelineTaskModel(startTime: "06.00", endTime: "06.15", duration: "15 min", title: "Change", initials: "AA", isCompleted: true, hasRepeatIcon: true, color: .green.opacity(0.7), iconSystemName: nil),
-        TimelineTaskModel(startTime: "06.15", endTime: "06.30", duration: "15 min", title: "Give Meds", initials: "AA", isCompleted: true, hasRepeatIcon: true, color: .green.opacity(0.7), iconSystemName: nil),
-        TimelineTaskModel(startTime: "06.30", endTime: "07.30", duration: "1 hr", title: "Give Bfast", initials: "SA", isCompleted: true, hasRepeatIcon: true, color: .green.opacity(0.7), iconSystemName: nil),
-        TimelineTaskModel(startTime: "09.00", endTime: "10.00", duration: "1 hr", title: "Give Bath", initials: "SA", isCompleted: false, hasRepeatIcon: true, color: .gray.opacity(0.7), iconSystemName: nil),
-        TimelineTaskModel(startTime: "13.00", endTime: "15.00", duration: "2 hr", title: "Hospital Visit", initials: nil, isCompleted: false, hasRepeatIcon: false, color: .gray.opacity(0.7), iconSystemName: "person.badge.plus")
-    ]
-    
-    let myTasks: [TimelineTaskModel] = [
-        TimelineTaskModel(startTime: "13.00", endTime: "15.00", duration: "2 hr", title: "Hospital Visit..", initials: "AA", isCompleted: false, hasRepeatIcon: false, color: .gray, iconSystemName: nil, isPending: true, showDocumentIcon: false),
-        TimelineTaskModel(startTime: "17.00", endTime: "17.30", duration: "30 min", title: "Prepare Dinner", initials: "AA", isCompleted: false, hasRepeatIcon: true, color: .orange.opacity(0.7), iconSystemName: nil, isPending: false, showDocumentIcon: true),
-        TimelineTaskModel(startTime: "19.00", endTime: "20.00", duration: "30 min", title: "Give Meds", initials: "AA", isCompleted: false, hasRepeatIcon: false, color: .gray, iconSystemName: nil, isPending: true, showDocumentIcon: true)
-    ]
-    
-    var activeTasks: [TimelineTaskModel] {
-        selectedTab == 0 ? allTasks : myTasks
+    var filter: TimelineFilter = .all
+    @Binding var tasks: [TimelineTaskModel]
+    @Binding var selectedDate: Date
+    var onTaskTapped: ((TimelineTaskModel) -> Void)? = nil
+
+    @State private var currentTime = Date()
+    private let timer = Timer.publish(every: 30, on: .main, in: .common).autoconnect()
+
+    private let pointsPerMinute: CGFloat = 1.2
+    private let minTaskHeight: CGFloat = 80
+    private let gapBetweenTasks: CGFloat = 16
+
+    private var calendar: Calendar { Calendar.current }
+
+    var filteredTasks: [TimelineTaskModel] {
+        let dayStart = calendar.startOfDay(for: selectedDate)
+        let dayEnd = calendar.date(byAdding: .day, value: 1, to: dayStart)!
+
+        let dayTasks = tasks.filter { task in
+            task.startDate >= dayStart && task.startDate < dayEnd
+        }
+
+        let filtered: [TimelineTaskModel]
+        switch filter {
+        case .all:
+            filtered = dayTasks
+        case .mine:
+            filtered = dayTasks.filter { $0.initials == "AA" }
+        }
+
+        return filtered.sorted { $0.startDate < $1.startDate }
     }
-    
+
+    private func taskHeight(for task: TimelineTaskModel) -> CGFloat {
+        max(minTaskHeight, CGFloat(task.durationMinutes) * pointsPerMinute)
+    }
+
+    private func currentTimeOffset() -> CGFloat? {
+        let now = currentTime
+        guard !filteredTasks.isEmpty else { return nil }
+
+        let dayStart = calendar.startOfDay(for: selectedDate)
+        let dayEnd = calendar.date(byAdding: .day, value: 1, to: dayStart)!
+        guard now >= dayStart && now < dayEnd else { return nil }
+
+        var offset: CGFloat = 0
+
+        for (index, task) in filteredTasks.enumerated() {
+            let height = taskHeight(for: task)
+
+            if now < task.startDate {
+                return offset + 10
+            }
+
+            if now >= task.startDate && now <= task.endDate {
+                let elapsed = now.timeIntervalSince(task.startDate)
+                let total = task.endDate.timeIntervalSince(task.startDate)
+                let fraction = CGFloat(elapsed / total)
+                return offset + height * fraction
+            }
+
+            offset += height
+
+            if index < filteredTasks.count - 1 {
+                offset += gapBetweenTasks
+            }
+        }
+
+        return offset + 10
+    }
+
+    private func weekDates(around date: Date) -> [Date] {
+        let weekday = calendar.component(.weekday, from: date)
+        let sundayOffset = -(weekday - 1)
+        guard let sunday = calendar.date(byAdding: .day, value: sundayOffset, to: date) else {
+            return []
+        }
+        return (0..<7).compactMap { calendar.date(byAdding: .day, value: $0, to: sunday) }
+    }
+
     var body: some View {
         VStack(spacing: 0) {
-            HStack {
-                HStack(spacing: 8) {
-                    Text("26 May")
-                        .font(.title2)
-                        .fontWeight(.bold)
-                    Text("2026")
-                        .font(.title2)
-                        .foregroundStyle(.gray)
-                    Image(systemName: "chevron.right")
-                        .font(.title3)
-                        .fontWeight(.bold)
-                }
-                Spacer()
-                
-                NavigationLink(destination: InboxView()) {
-                    Image(systemName: "tray.fill")
-                        .font(.title2)
-                        .foregroundColor(.black)
-                        .padding(12)
-                        .background(Color.gray.opacity(0.15))
-                        .clipShape(Circle())
-                        .overlay(alignment: .topTrailing) {
-                            Circle()
-                                .fill(.red)
-                                .frame(width: 12, height: 12)
-                                .offset(x: 0, y: 0)
-                        }
-                }
+            headerSection
+            weekCalendarSection
+            Divider().padding(.vertical, 16)
+            timelineScrollSection
+        }
+        .onReceive(timer) { _ in
+            currentTime = Date()
+        }
+    }
+
+    private var headerSection: some View {
+        HStack {
+            HStack(spacing: 8) {
+                Text(selectedDate.formatted(.dateTime.day().month(.wide)))
+                    .font(.title2)
+                    .fontWeight(.bold)
+                Text(selectedDate.formatted(.dateTime.year()))
+                    .font(.title2)
+                    .foregroundStyle(.gray)
+                Image(systemName: "chevron.right")
+                    .font(.title3)
+                    .fontWeight(.bold)
             }
-            .padding(.horizontal)
-            .padding(.top, 16)
-            
-            HStack {
-                let days = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"]
-                let dates = [24, 25, 26, 27, 28, 29, 30]
-                
-                ForEach(0..<7, id: \.self) { i in
+            Spacer()
+
+            NavigationLink(destination: InboxView()) {
+                Image(systemName: "tray.fill")
+                    .font(.title2)
+                    .foregroundColor(.black)
+                    .padding(12)
+                    .background(Color.gray.opacity(0.15))
+                    .clipShape(Circle())
+                    .overlay(alignment: .topTrailing) {
+                        Circle()
+                            .fill(.red)
+                            .frame(width: 12, height: 12)
+                            .offset(x: 0, y: 0)
+                    }
+            }
+        }
+        .padding(.horizontal)
+        .padding(.top, 16)
+    }
+
+    private var weekCalendarSection: some View {
+        HStack {
+            let week = weekDates(around: selectedDate)
+            let dayFormatter: DateFormatter = {
+                let f = DateFormatter()
+                f.dateFormat = "EEE"
+                return f
+            }()
+
+            ForEach(week, id: \.self) { day in
+                let isSelected = calendar.isDate(day, inSameDayAs: selectedDate)
+                let isToday = calendar.isDateInToday(day)
+
+                Button(action: {
+                    selectedDate = day
+                }) {
                     VStack(spacing: 8) {
-                        Text(days[i])
+                        Text(dayFormatter.string(from: day).uppercased())
                             .font(.caption2)
                             .fontWeight(.semibold)
                             .foregroundStyle(.gray.opacity(0.8))
-                        
-                        Text("\(dates[i])")
+
+                        Text("\(calendar.component(.day, from: day))")
                             .font(.headline)
-                            .fontWeight(dates[i] == 26 ? .bold : .semibold)
-                            .foregroundStyle(dates[i] == 26 ? .blue : .primary)
+                            .fontWeight(isSelected ? .bold : .semibold)
+                            .foregroundStyle(isSelected ? Color.accentColor : (isToday ? Color.accentColor.opacity(0.7) : .primary))
                             .frame(width: 36, height: 36)
                             .background {
-                                if dates[i] == 26 {
-                                    Circle().fill(Color.blue.opacity(0.1))
+                                if isSelected {
+                                    Circle().fill(Color.accentColor.opacity(0.15))
                                 }
                             }
                     }
-                    if i < 6 { Spacer() }
                 }
+                .buttonStyle(.plain)
+                if day != week.last { Spacer() }
             }
-            .padding(.horizontal, 24)
-            .padding(.top, 16)
-            
-            Divider().padding(.vertical, 16)
-            
-            HStack(spacing: 0) {
-                Button(action: { selectedTab = 0 }) {
-                    Text("All Task")
-                        .font(.subheadline)
-                        .fontWeight(selectedTab == 0 ? .semibold : .regular)
-                        .foregroundColor(selectedTab == 0 ? .black : .gray)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 10)
-                        .background {
-                            if selectedTab == 0 {
-                                Capsule().fill(Color.white)
-                                    .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 2)
+        }
+        .padding(.horizontal, 24)
+        .padding(.top, 16)
+    }
+
+    private var timelineScrollSection: some View {
+        ScrollView {
+            ZStack(alignment: .topLeading) {
+                VStack(spacing: gapBetweenTasks) {
+                    ForEach(filteredTasks.indices, id: \.self) { index in
+                        let task = filteredTasks[index]
+                        let height = taskHeight(for: task)
+                        TimelineTaskRow(
+                            task: task,
+                            isLast: index == filteredTasks.count - 1,
+                            rowHeight: height,
+                            onToggleComplete: {
+                                toggleTask(task)
+                            },
+                            onTap: {
+                                onTaskTapped?(task)
                             }
-                        }
-                }
-                
-                Button(action: { selectedTab = 1 }) {
-                    Text("My Task")
-                        .font(.subheadline)
-                        .fontWeight(selectedTab == 1 ? .semibold : .regular)
-                        .foregroundColor(selectedTab == 1 ? .black : .gray)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 10)
-                        .background {
-                            if selectedTab == 1 {
-                                Capsule().fill(Color.white)
-                                    .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 2)
-                            }
-                        }
-                }
-            }
-            .padding(4)
-            .background(Color.gray.opacity(0.15))
-            .clipShape(Capsule())
-            .padding(.horizontal, 24)
-            .padding(.bottom, 16)
-            
-            ScrollView {
-                ZStack(alignment: .topLeading) {
-                    VStack(spacing: 0) {
-                        ForEach(activeTasks.indices, id: \.self) { index in
-                            TimelineTaskRow(
-                                task: activeTasks[index],
-                                isLast: index == activeTasks.count - 1
-                            )
-                            .padding(.bottom, index == activeTasks.count - 1 ? 120 : 0)
-                        }
-                    }
-                    .padding(.horizontal)
-                    
-                    if selectedTab == 0 {
-                        CurrentTimeIndicator()
-                            .padding(.top, 340)
+                        )
+                        .padding(.bottom, index == filteredTasks.count - 1 ? 120 : 0)
                     }
                 }
+                .padding(.horizontal)
+
+                if let offset = currentTimeOffset() {
+                    CurrentTimeIndicator(currentTime: currentTime)
+                        .offset(y: offset)
+                }
             }
+        }
+    }
+
+    private func toggleTask(_ task: TimelineTaskModel) {
+        guard let idx = tasks.firstIndex(where: { $0.id == task.id }) else { return }
+        if tasks[idx].state == .completed {
+            tasks[idx].state = tasks[idx].previousState ?? .assigned
+            tasks[idx].previousState = nil
+        } else {
+            tasks[idx].previousState = tasks[idx].state
+            tasks[idx].state = .completed
         }
     }
 }
 
 struct CurrentTimeIndicator: View {
+    var currentTime: Date
+
+    private var timeString: String {
+        let f = DateFormatter()
+        f.dateFormat = "HH:mm"
+        return f.string(from: currentTime)
+    }
+
     var body: some View {
         HStack(spacing: 0) {
-            Text("09:41")
+            Text(timeString)
                 .font(.caption2)
                 .fontWeight(.bold)
                 .foregroundColor(.white)
@@ -158,7 +238,7 @@ struct CurrentTimeIndicator: View {
                 .background(Color.red)
                 .clipShape(Capsule())
                 .padding(.leading, 8)
-            
+
             Rectangle()
                 .fill(Color.red)
                 .frame(height: 1.5)
@@ -168,7 +248,33 @@ struct CurrentTimeIndicator: View {
 }
 
 #Preview {
+    @Previewable @State var selectedDate = Date()
+    @Previewable @State var tasks: [TimelineTaskModel] = [
+        TimelineTaskModel(
+            startDate: TimelineTaskModel.makeDate(hour: 5, minute: 0),
+            endDate: TimelineTaskModel.makeDate(hour: 5, minute: 30),
+            title: "Prepare Bfast",
+            initials: "AA",
+            hasRepeatIcon: true,
+            state: .completed
+        ),
+        TimelineTaskModel(
+            startDate: TimelineTaskModel.makeDate(hour: 9, minute: 0),
+            endDate: TimelineTaskModel.makeDate(hour: 10, minute: 0),
+            title: "Give Bath",
+            initials: "SA",
+            hasRepeatIcon: true,
+            state: .ongoing
+        ),
+        TimelineTaskModel(
+            startDate: TimelineTaskModel.makeDate(hour: 13, minute: 0),
+            endDate: TimelineTaskModel.makeDate(hour: 15, minute: 0),
+            title: "Hospital Visit",
+            initials: "AA",
+            state: .pending
+        )
+    ]
     NavigationStack {
-        TimelineView()
+        TimelineView(filter: .all, tasks: $tasks, selectedDate: $selectedDate)
     }
 }
