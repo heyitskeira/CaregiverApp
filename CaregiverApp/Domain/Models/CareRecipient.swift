@@ -9,7 +9,19 @@ struct CareRecipient: Identifiable, Hashable, Codable, Sendable {
     var allergies: String
     var favoriteFood: String
     var healthNotes: String
-
+    
+    var ageInYears: Int {
+        let calendar = Calendar.current
+        let ageComponents = calendar.dateComponents([.year], from: dateOfBirth, to: Date())
+        return ageComponents.year ?? 0
+    }
+    
+    var dateOfBirthString: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "dd MMM yyyy"
+        return formatter.string(from: dateOfBirth)
+    }
+    
     init(
         id: UUID = UUID(),
         name: String,
