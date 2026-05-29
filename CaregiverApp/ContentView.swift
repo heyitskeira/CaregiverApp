@@ -6,79 +6,95 @@
 import SwiftUI
 
 enum AppTab: String, CaseIterable {
-    case allTasks
-    case myTasks
+    case timeline
+    case details
     case settings
+    case addTask
 
     var title: String {
         switch self {
-        case .allTasks:
-            return "All Tasks"
-        case .myTasks:
-            return "My Tasks"
+        case .timeline:
+            return "Timeline"
+        case .details:
+            return "Details"
         case .settings:
             return "Settings"
+        case .addTask:
+            return "Add Task"
         }
     }
 
     var icon: String {
         switch self {
-        case .allTasks:
-            return "calendar"
-        case .myTasks:
-            return "person.crop.circle.badge.checkmark"
+        case .timeline:
+            return "list.bullet.rectangle.portrait"
+        case .details:
+            return "stethoscope"
         case .settings:
             return "gearshape"
+        case .addTask:
+            return "plus"
         }
     }
 }
 
 struct ContentView: View {
-    @State private var selectedTab: AppTab = .allTasks
+    @State private var selectedTab: AppTab = .timeline
+    @State private var showTaskSheet = false
 
     var body: some View {
+        
         TabView(selection: $selectedTab) {
-
+            Tab (
+                AppTab.timeline.title,
+                systemImage: AppTab.timeline.icon,
+                value: AppTab.timeline
+            ) {
+                NavigationStack {
+                    TimelineView()
+                }
+            }
+            
             Tab(
-                AppTab.allTasks.title,
-                systemImage: AppTab.allTasks.icon,
-                value: AppTab.allTasks
+                AppTab.details.title,
+                systemImage: AppTab.details.icon,
+                value: .details
             ) {
                 NavigationStack {
                     ContentUnavailableView(
-                        "All Tasks",
-                        systemImage: "calendar",
-                        description: Text("Task timeline will appear here.")
+                        "Details",
+                        systemImage: "stethoscope",
+                        description: Text("Details will appear here.")
                     )
-                    .navigationTitle("All Tasks")
+                    .navigationTitle("Details")
                 }
             }
-
-            Tab(
-                AppTab.myTasks.title,
-                systemImage: AppTab.myTasks.icon,
-                value: AppTab.myTasks
-            ) {
-                NavigationStack {
-                    ContentUnavailableView(
-                        "My Tasks",
-                        systemImage: "checkmark.circle",
-                        description: Text("Your assigned tasks will appear here.")
-                    )
-                    .navigationTitle("My Tasks")
-                }
-            }
-
+            
             Tab(
                 AppTab.settings.title,
                 systemImage: AppTab.settings.icon,
-                value: AppTab.settings
+                value: .settings
             ) {
-                NavigationStack {
-                    SettingsRootView()
-                }
+                SettingsRootView()
+            }
+            
+            Tab(
+                AppTab.addTask.title,
+                systemImage: AppTab.addTask.icon,
+                value: .addTask,
+                role: .search
+            ) {}
+        }
+        .onChange(of: selectedTab) { oldValue, newValue in
+            if newValue == .addTask {
+                selectedTab = oldValue
+                showTaskSheet = true
             }
         }
+        .sheet(isPresented: $showTaskSheet) {
+            TaskSheetView()
+        }
+
     }
 }
 
