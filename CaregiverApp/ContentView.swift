@@ -9,6 +9,7 @@ enum AppTab: String, CaseIterable {
     case timeline
     case details
     case settings
+    case addTask
 
     var title: String {
         switch self {
@@ -18,6 +19,8 @@ enum AppTab: String, CaseIterable {
             return "Details"
         case .settings:
             return "Settings"
+        case .addTask:
+            return "Add Task"
         }
     }
 
@@ -26,9 +29,11 @@ enum AppTab: String, CaseIterable {
         case .timeline:
             return "list.bullet.rectangle.portrait"
         case .details:
-            return "stethoscope" // Changed to match stethoscope from image
+            return "stethoscope"
         case .settings:
             return "gearshape"
+        case .addTask:
+            return "plus"
         }
     }
 }
@@ -38,81 +43,58 @@ struct ContentView: View {
     @State private var showTaskSheet = false
 
     var body: some View {
-        ZStack(alignment: .bottom) {
-            Group {
-                switch selectedTab {
-                case .timeline:
-                    NavigationStack {
-                        TimelineView()
-                    }
-                case .details:
-                    NavigationStack {
-                        ContentUnavailableView(
-                            "Details",
-                            systemImage: "stethoscope",
-                            description: Text("Details will appear here.")
-                        )
-                        .navigationTitle("Details")
-                    }
-                case .settings:
-                    NavigationStack {
-                        SettingsRootView()
-                    }
+        
+        TabView(selection: $selectedTab) {
+            Tab (
+                AppTab.timeline.title,
+                systemImage: AppTab.timeline.icon,
+                value: AppTab.timeline
+            ) {
+                NavigationStack {
+                    TimelineView()
                 }
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
             
-            HStack(spacing: 16) {
-                HStack(spacing: 0) {
-                    ForEach(AppTab.allCases, id: \.self) { tab in
-                        Button(action: {
-                            selectedTab = tab
-                        }) {
-                            VStack(spacing: 4) {
-                                Image(systemName: tab.icon)
-                                    .font(.title2)
-                                    .fontWeight(selectedTab == tab ? .bold : .regular)
-                                Text(tab.title)
-                                    .font(.caption2)
-                                    .fontWeight(selectedTab == tab ? .bold : .semibold)
-                            }
-                            .foregroundColor(selectedTab == tab ? Color(red: 0.2, green: 0.4, blue: 0.8) : .black)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 12)
-                            .background {
-                                if selectedTab == tab {
-                                    Color.gray.opacity(0.15)
-                                        .clipShape(Capsule())
-                                        .padding(.horizontal, 4)
-                                }
-                            }
-                        }
-                    }
-                }
-                .frame(height: 70)
-                .background(Color.white)
-                .clipShape(Capsule())
-                .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 5)
-                
-                Button(action: {
-                    showTaskSheet = true
-                }) {
-                    Image(systemName: "plus")
-                        .font(.title2.bold())
-                        .foregroundColor(.black)
-                        .frame(width: 70, height: 70)
-                        .background(Color.white)
-                        .clipShape(Circle())
-                        .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 5)
+            Tab(
+                AppTab.details.title,
+                systemImage: AppTab.details.icon,
+                value: .details
+            ) {
+                NavigationStack {
+                    ContentUnavailableView(
+                        "Details",
+                        systemImage: "stethoscope",
+                        description: Text("Details will appear here.")
+                    )
+                    .navigationTitle("Details")
                 }
             }
-            .padding(.horizontal, 16)
-            .padding(.bottom, 24)
+            
+            Tab(
+                AppTab.settings.title,
+                systemImage: AppTab.settings.icon,
+                value: .settings
+            ) {
+                SettingsRootView()
+            }
+            
+            Tab(
+                AppTab.addTask.title,
+                systemImage: AppTab.addTask.icon,
+                value: .addTask,
+                role: .search
+            ) {}
         }
-        .ignoresSafeArea(.keyboard)
+        .onChange(of: selectedTab) { oldValue, newValue in
+            if newValue == .addTask {
+                selectedTab = oldValue
+                showTaskSheet = true
+            }
+        }
         .sheet(isPresented: $showTaskSheet) {
             TaskSheetView()
         }
+
     }
 }
 
