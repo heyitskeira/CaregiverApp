@@ -72,6 +72,19 @@ struct PatientdetailView: View {
     }
 }
 
+struct PatientdetailEditor:View {
+    @Environment(\.patientRepository) private var patientRepository
+    @State var patientdetail: CareRecipient
+    
+    var body: some View {
+        Form {
+            Section(header: Text("Patient Details")) {
+                TextField("Name", text: $patientdetail.name)
+            }
+        }
+    }
+}
+
 
 #Preview {
     PatientdetailView(patientdetail: SeedData.patient)
