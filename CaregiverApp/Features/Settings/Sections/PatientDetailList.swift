@@ -15,17 +15,14 @@ struct PatientDetailList: View {
     var body: some View {
         HStack {
             Image(systemName: menuImage)
-                .font(.system(size: 10))
                 .frame(width: 20, height: 20)
                 .clipShape(Circle())
             
             Text(menuName)
-                .font(.system(size: 12))
             
             Spacer()
             
             Text(menuData)
-                .font(.system(size: 12))
         }
     }
 }
