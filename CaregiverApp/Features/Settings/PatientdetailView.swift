@@ -9,7 +9,9 @@ import SwiftUI
 
 struct PatientdetailView: View {
     @Environment(\.patientRepository) private var patientRepository
+    
     @State var patientdetail: CareRecipient
+    @State private var isShowingEditView = false
     
     var body: some View {
         VStack {
@@ -20,8 +22,13 @@ struct PatientdetailView: View {
                     .padding(2)
                 
                 Spacer()
-                    
-                    
+                Button(action: {
+                    isShowingEditView = true
+                }) {
+                    Text("Edit")
+                        .fontWeight(.medium)
+                }
+                .padding(.trailing, 5)
             }
             ZStack{
                 RoundedRectangle(cornerRadius: 10)
@@ -41,7 +48,7 @@ struct PatientdetailView: View {
                             .fontWeight(.bold)
                         Text( "\(patientdetail.ageInYears) years old")
                             .font(.caption)
-
+                        
                     }
                     Spacer()
                 }
@@ -66,12 +73,15 @@ struct PatientdetailView: View {
                     }
                 }
             }
-//            .scrollContentBackground(.hidden)
+            //            .scrollContentBackground(.hidden)
         }
         .padding()
+        
+        .sheet(isPresented: $isShowingEditView) {
+            PatientEditView(patient: $patientdetail)
+        }
     }
 }
-
 
 #Preview {
     PatientdetailView(patientdetail: SeedData.patient)
