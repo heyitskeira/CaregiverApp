@@ -2,6 +2,13 @@ import SwiftUI
 
 /// Temporary settings shell until the Settings feature owner integrates the full screen.
 struct SettingsRootView: View {
+    enum Language: String, CaseIterable, Identifiable {
+        case English, Indonesian, Dutch, Spanish
+        var id: Self { self }
+    }
+    
+    @State private var selectedLanguage: Language = .English
+    
     var body: some View {
         NavigationStack{
             HStack{
@@ -38,15 +45,24 @@ struct SettingsRootView: View {
                 }
                 
                 Section(header: Text("Preferences")){
-                    NavigationLink(destination:             NotifsettingView()){
-                        PreferenceList(menuImage: "bell", menuName: "Notification Presferences")
-                    }
-                    NavigationLink(destination:
-                                    LangsettingView()){
-                        PreferenceList(menuImage: "globe", menuName: "Language")}
+                    
                     NavigationLink(destination:
                                     PnSsetting()){
                         PreferenceList(menuImage: "lock", menuName: "Privacy & Security")}
+                    
+                    NavigationLink(destination:             NotifsettingView()){
+                        PreferenceList(menuImage: "bell", menuName: "Notification Presferences")
+                    }
+                    
+                    HStack{
+                        PreferenceList(menuImage: "globe", menuName: "Language")
+                        Picker("", selection: $selectedLanguage) {
+                            Text("English").tag(Language.English)
+                            Text("Indonesian").tag(Language.Indonesian)
+                            Text("Dutch").tag(Language.Dutch)
+                            Text("Spanish").tag(Language.Spanish)
+                        }
+                    }
                 }
                 
             }
