@@ -56,19 +56,19 @@ struct PatientdetailView: View {
             }
             
             List{
-                Section(header: Text("Basic Information").font(.system(size: 14, weight: .bold)).foregroundStyle(Color.black)){
+                Section(header: Text("Basic Information").foregroundStyle(Color.black)){
                     PatientDetailList(menuName: "Date of Birth", menuImage: "calendar", menuData: patientdetail.dateOfBirthString)
                     PatientDetailList(menuName: "Gender", menuImage: "figure.stand.dress.line.vertical.figure", menuData: patientdetail.gender)
                     PatientDetailList(menuName: "Blood Type", menuImage: "drop", menuData: patientdetail.bloodType)
                 }
                 
-                Section(header: Text("Health Information").font(.system(size: 14, weight: .bold)).foregroundStyle(Color.black)){
+                Section(header: Text("Health Information").foregroundStyle(Color.black)){
                     PatientDetailList(menuName: "Allergies", menuImage: "exclamationmark.square.fill", menuData: patientdetail.allergies)
                     PatientDetailList(menuName: "Favorite Food", menuImage: "fork.knife", menuData: patientdetail.favoriteFood)
                     VStack (alignment: .leading){
                         PatientDetailList(menuName: "Health Profile", menuImage: "text.document", menuData: "")
                         Text(patientdetail.healthNotes)
-                            .font(.system(size: 12))
+                            .font(Font.caption)
                             .foregroundStyle(Color.secondary)
                     }
                 }
