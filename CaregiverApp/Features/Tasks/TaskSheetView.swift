@@ -310,7 +310,7 @@ struct TaskSheetView: View {
                     if isEditing {
                         Button("Save") {
                             saveTask()
-                        }
+                        }   
                         .fontWeight(.semibold)
                         .foregroundStyle(.blue)
                         .disabled(taskName.trimmingCharacters(in: .whitespaces).isEmpty)
