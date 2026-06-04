@@ -16,10 +16,11 @@ struct TimelineTaskModel: Identifiable {
     var hasRepeatIcon: Bool
     var iconSystemName: String?
     var state: TaskState = .assigned
-    var previousState: TaskState? = nil
+    var previousState: TaskState?
     var showDocumentIcon: Bool = false
     var taskNote: String = ""
     var repeatOption: RepeatOption = .none
+    var assigneeIDs: [UUID] = []
 
     init(
         id: UUID = UUID(),
@@ -32,7 +33,8 @@ struct TimelineTaskModel: Identifiable {
         state: TaskState = .assigned,
         showDocumentIcon: Bool = false,
         taskNote: String = "",
-        repeatOption: RepeatOption = .none
+        repeatOption: RepeatOption = .none,
+        assigneeIDs: [UUID] = []
     ) {
         self.id = id
         self.startDate = startDate
@@ -45,6 +47,7 @@ struct TimelineTaskModel: Identifiable {
         self.showDocumentIcon = showDocumentIcon
         self.taskNote = taskNote
         self.repeatOption = repeatOption
+        self.assigneeIDs = assigneeIDs
     }
 
     var isCompleted: Bool { state == .completed }
@@ -56,15 +59,15 @@ struct TimelineTaskModel: Identifiable {
     }
 
     var startTimeString: String {
-        let f = DateFormatter()
-        f.dateFormat = "HH.mm"
-        return f.string(from: startDate)
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH.mm"
+        return formatter.string(from: startDate)
     }
 
     var endTimeString: String {
-        let f = DateFormatter()
-        f.dateFormat = "HH.mm"
-        return f.string(from: endDate)
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH.mm"
+        return formatter.string(from: endDate)
     }
 
     var durationString: String {
@@ -107,12 +110,12 @@ struct TimelineTaskModel: Identifiable {
     }
 
     static func makeDate(hour: Int, minute: Int, from reference: Date = Date()) -> Date {
-        let cal = Calendar.current
-        var comps = cal.dateComponents([.year, .month, .day], from: reference)
-        comps.hour = hour
-        comps.minute = minute
-        comps.second = 0
-        return cal.date(from: comps) ?? reference
+        let calendar = Calendar.current
+        var components = calendar.dateComponents([.year, .month, .day], from: reference)
+        components.hour = hour
+        components.minute = minute
+        components.second = 0
+        return calendar.date(from: components) ?? reference
     }
 }
 
@@ -237,10 +240,12 @@ struct TimelineTaskRow: View {
                             .foregroundStyle(.gray.opacity(0.5))
                     } else {
                         Circle()
-                            .stroke(task.isOngoing
+                            .stroke(
+                                task.isOngoing
                                     ? Color(red: 0.13, green: 0.55, blue: 0.13)
                                     : Color(red: 0.1, green: 0.2, blue: 0.4),
-                                    lineWidth: 3)
+                                lineWidth: 3
+                            )
                             .frame(width: 22, height: 22)
                     }
                 }

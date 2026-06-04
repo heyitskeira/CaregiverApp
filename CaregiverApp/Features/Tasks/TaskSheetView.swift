@@ -2,8 +2,6 @@
 //  TaskSheetView.swift
 //  CaregiverApp
 //
-//  Created by Christopher Jonathan on 27/05/26.
-//
 
 import SwiftUI
 
@@ -14,14 +12,6 @@ enum RepeatOption: String, CaseIterable {
     case monthly = "Every month"
     case yearly = "Every year"
     case custom = "Custom"
-}
-
-struct Helper: Identifiable {
-    let id = UUID()
-
-    let name: String
-    let phoneNumber: String
-    let role: String
 }
 
 enum RepeatUnit: String, CaseIterable {
@@ -38,10 +28,26 @@ enum TaskSheetMode {
 }
 
 struct TaskSheetView: View {
-
     var mode: TaskSheetMode
     var onSave: ((TimelineTaskModel) -> Void)?
     var onUpdate: ((TimelineTaskModel) -> Void)?
+
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.contactRepository) private var contactRepository
+
+    @State private var assignedContacts: [CareContact] = []
+    @State private var showingHelperPicker = false
+    @State private var taskName: String
+    @State private var taskNote: String
+    @State private var taskDate: Date
+    @State private var taskEndDate: Date
+    @State private var repeatOption: RepeatOption
+    @State private var showingCustomRepeat = false
+    @State private var repeatInterval = 1
+    @State private var repeatUnit: RepeatUnit = .weeks
+    @State private var isEditing: Bool
+    @State private var editingTaskId: UUID?
+    @State private var editingAssigneeIDs: [UUID] = []
 
     init(
         mode: TaskSheetMode = .create,
@@ -61,65 +67,20 @@ struct TaskSheetView: View {
             _repeatOption = State(initialValue: .none)
             _isEditing = State(initialValue: true)
             _editingTaskId = State(initialValue: nil)
-        case .view(let task):
+        case .view(let task), .edit(let task):
             _taskName = State(initialValue: task.title)
             _taskNote = State(initialValue: task.taskNote)
             _taskDate = State(initialValue: task.startDate)
             _taskEndDate = State(initialValue: task.endDate)
             _repeatOption = State(initialValue: task.repeatOption)
-            _isEditing = State(initialValue: false)
+            _isEditing = State(initialValue: {
+                if case .edit = mode { return true }
+                return false
+            }())
             _editingTaskId = State(initialValue: task.id)
-        case .edit(let task):
-            _taskName = State(initialValue: task.title)
-            _taskNote = State(initialValue: task.taskNote)
-            _taskDate = State(initialValue: task.startDate)
-            _taskEndDate = State(initialValue: task.endDate)
-            _repeatOption = State(initialValue: task.repeatOption)
-            _isEditing = State(initialValue: true)
-            _editingTaskId = State(initialValue: task.id)
+            _editingAssigneeIDs = State(initialValue: task.assigneeIDs)
         }
     }
-
-    @State private var assignedHelpers: [Helper] = []
-
-    private let availableHelpers: [Helper] = [
-        Helper(
-            name: "Sarah Johnson",
-            phoneNumber: "+1 (555) 123-4567",
-            role: "Primary Caregiver"
-        ),
-        Helper(
-            name: "Michael Johnson",
-            phoneNumber: "+1 (555) 987-6543",
-            role: "Substitute Helper"
-        ),
-        Helper(
-            name: "Emma Johnson",
-            phoneNumber: "+1 (555) 246-8100",
-            role: "Backup"
-        )
-    ]
-
-    @State private var showingHelperPicker = false
-
-    @Environment(\.dismiss) private var dismiss
-
-    @State private var taskName: String
-    @State private var taskNote: String
-
-    @State private var taskDate: Date
-    @State private var taskEndDate: Date
-
-    @State private var repeatOption: RepeatOption
-
-    @State private var showingCustomRepeat = false
-
-    @State private var repeatInterval = 1
-
-    @State private var repeatUnit: RepeatUnit = .weeks
-
-    @State private var isEditing: Bool
-    @State private var editingTaskId: UUID?
 
     private var isCreateMode: Bool {
         if case .create = mode { return true }
@@ -135,48 +96,43 @@ struct TaskSheetView: View {
             Form {
                 Section("Task Name") {
                     if isEditing {
-                        TextField(
-                            "e.g., Change poopie pants",
-                            text: $taskName
-                        )
+                        TextField("e.g., Change poopie pants", text: $taskName)
                     } else {
                         Text(taskName)
-                            .foregroundStyle(.primary)
                     }
                 }
 
                 Section("Assign") {
-                    ForEach(assignedHelpers, id: \.phoneNumber) { helper in
-                        HStack {
-                            Image(systemName: "person.crop.circle.fill")
-                                .font(.system(size: 40))
+                    ForEach(assignedContacts) { contact in
+                        HStack(spacing: 12) {
+                            ContactAvatarView(contact: contact, size: 40)
 
-                            VStack(alignment: .leading) {
-                                Text(helper.name)
-
-                                Text(helper.phoneNumber)
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-
-                                Text(helper.role)
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(contact.name)
+                                if !contact.phone.isEmpty {
+                                    Text(contact.phone)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                                Text(contact.relationship)
                                     .font(.caption2)
-                                    .foregroundStyle(.blue)
+                                    .foregroundStyle(.tint)
                             }
 
                             Spacer()
 
                             if isEditing {
                                 Button {
-                                    assignedHelpers.removeAll {
-                                        $0.phoneNumber == helper.phoneNumber
-                                    }
+                                    assignedContacts.removeAll { $0.id == contact.id }
                                 } label: {
                                     Image(systemName: "minus.circle.fill")
                                         .foregroundStyle(.red)
                                 }
+                                .accessibilityLabel("Remove \(contact.name)")
                             }
                         }
                     }
+
                     if isEditing {
                         Button {
                             showingHelperPicker = true
@@ -188,20 +144,10 @@ struct TaskSheetView: View {
 
                 Section("Schedule") {
                     if isEditing {
-                        DatePicker(
-                            "Start",
-                            selection: $taskDate,
-                            displayedComponents: [.date, .hourAndMinute]
-                        )
-                        .datePickerStyle(.compact)
-
-                        DatePicker(
-                            "End",
-                            selection: $taskEndDate,
-                            in: taskDate...,
-                            displayedComponents: [.date, .hourAndMinute]
-                        )
-                        .datePickerStyle(.compact)
+                        DatePicker("Start", selection: $taskDate, displayedComponents: [.date, .hourAndMinute])
+                            .datePickerStyle(.compact)
+                        DatePicker("End", selection: $taskEndDate, in: taskDate..., displayedComponents: [.date, .hourAndMinute])
+                            .datePickerStyle(.compact)
                     } else {
                         HStack {
                             Text("Start")
@@ -247,14 +193,8 @@ struct TaskSheetView: View {
                             }
                         } label: {
                             HStack {
-                                Text(
-                                    repeatOption == .custom
-                                    ? customRepeatText
-                                    : repeatOption.rawValue
-                                )
-
+                                Text(repeatOption == .custom ? customRepeatText : repeatOption.rawValue)
                                 Spacer()
-
                                 Image(systemName: "chevron.right")
                                     .foregroundStyle(.secondary)
                             }
@@ -263,22 +203,15 @@ struct TaskSheetView: View {
                         HStack {
                             Text("Repeat")
                             Spacer()
-                            Text(
-                                repeatOption == .custom
-                                ? customRepeatText
-                                : repeatOption.rawValue
-                            )
-                            .foregroundStyle(.secondary)
+                            Text(repeatOption == .custom ? customRepeatText : repeatOption.rawValue)
+                                .foregroundStyle(.secondary)
                         }
                     }
                 }
 
                 Section("Notes for Helper") {
                     if isEditing {
-                        TextField(
-                            "e.g., Poopie first then pants",
-                            text: $taskNote
-                        )
+                        TextField("e.g., Poopie first then pants", text: $taskNote)
                     } else {
                         Text(taskNote.isEmpty ? "No notes" : taskNote)
                             .foregroundStyle(taskNote.isEmpty ? .secondary : .primary)
@@ -290,14 +223,12 @@ struct TaskSheetView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button(isEditing && !isCreateMode ? "Cancel" : "Close") {
-                        if isEditing && !isCreateMode {
-                            if case .view(let task) = mode {
-                                taskName = task.title
-                                taskNote = task.taskNote
-                                taskDate = task.startDate
-                                taskEndDate = task.endDate
-                                repeatOption = task.repeatOption
-                            }
+                        if isEditing && !isCreateMode, case .view(let task) = mode {
+                            taskName = task.title
+                            taskNote = task.taskNote
+                            taskDate = task.startDate
+                            taskEndDate = task.endDate
+                            repeatOption = task.repeatOption
                             isEditing = false
                         } else {
                             dismiss()
@@ -310,10 +241,10 @@ struct TaskSheetView: View {
                     if isEditing {
                         Button("Save") {
                             saveTask()
-                        }   
+                        }
                         .fontWeight(.semibold)
                         .foregroundStyle(.blue)
-                        .disabled(taskName.trimmingCharacters(in: .whitespaces).isEmpty)
+                        .disabled(taskName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     } else {
                         Button("Edit") {
                             isEditing = true
@@ -322,74 +253,70 @@ struct TaskSheetView: View {
                     }
                 }
             }
+            .task {
+                await loadAssignedContacts()
+            }
         }
         .sheet(isPresented: $showingHelperPicker) {
             HelperPickerView(
-                availableHelpers: availableHelpers
-            ) { helper in
-                if !assignedHelpers.contains(where: {
-                    $0.phoneNumber == helper.phoneNumber
-                }) {
-                    assignedHelpers.append(helper)
+                excludedContactIDs: Set(assignedContacts.map(\.id))
+            ) { contact in
+                if !assignedContacts.contains(where: { $0.id == contact.id }) {
+                    assignedContacts.append(contact)
                 }
             }
         }
         .sheet(isPresented: $showingCustomRepeat) {
-            CustomRepeatView(
-                repeatInterval: $repeatInterval,
-                repeatUnit: $repeatUnit
-            )
+            CustomRepeatView(repeatInterval: $repeatInterval, repeatUnit: $repeatUnit)
         }
     }
 
     private var navigationTitle: String {
         if isCreateMode {
             return taskName.isEmpty ? "New Task" : String(taskName.prefix(25))
-        } else {
-            return String(taskName.prefix(25))
         }
+        return String(taskName.prefix(25))
+    }
+
+    private func loadAssignedContacts() async {
+        guard !editingAssigneeIDs.isEmpty else { return }
+        var loaded: [CareContact] = []
+        for id in editingAssigneeIDs {
+            if let contact = try? await contactRepository.contact(id: id) {
+                loaded.append(contact)
+            }
+        }
+        assignedContacts = loaded
     }
 
     private func saveTask() {
-        if isCreateMode {
-            let initials = assignedHelpers.first.map { helper in
-                let parts = helper.name.split(separator: " ")
-                return parts.map { String($0.prefix(1)) }.joined()
-            } ?? "AA"
+        let assigneeIDs = assignedContacts.map(\.id)
+        let initials = assignedContacts.first?.initials
 
-            let newTask = TimelineTaskModel(
-                startDate: taskDate,
-                endDate: taskEndDate,
-                title: taskName,
-                initials: initials,
-                hasRepeatIcon: repeatOption != .none,
-                state: .assigned,
-                taskNote: taskNote,
-                repeatOption: repeatOption
-            )
-            onSave?(newTask)
-        } else if let taskId = editingTaskId {
-            var updated = TimelineTaskModel(
-                id: taskId,
-                startDate: taskDate,
-                endDate: taskEndDate,
-                title: taskName,
-                hasRepeatIcon: repeatOption != .none,
-                state: .assigned,
-                taskNote: taskNote,
-                repeatOption: repeatOption
-            )
-            if let firstHelper = assignedHelpers.first {
-                let parts = firstHelper.name.split(separator: " ")
-                updated.initials = parts.map { String($0.prefix(1)) }.joined()
-            }
-            onUpdate?(updated)
+        var timelineModel = TimelineTaskModel(
+            id: editingTaskId ?? UUID(),
+            startDate: taskDate,
+            endDate: taskEndDate,
+            title: taskName.trimmingCharacters(in: .whitespacesAndNewlines),
+            initials: initials,
+            hasRepeatIcon: repeatOption != .none,
+            state: assigneeIDs.isEmpty ? .pending : .assigned,
+            taskNote: taskNote.trimmingCharacters(in: .whitespacesAndNewlines),
+            repeatOption: repeatOption,
+            assigneeIDs: assigneeIDs
+        )
+
+        if isCreateMode {
+            onSave?(timelineModel)
+        } else {
+            onUpdate?(timelineModel)
         }
         dismiss()
     }
 }
 
-
 #Preview {
     TaskSheetView()
+        .environment(\.contactRepository, AppDependencies.live.contactRepository)
+        .environment(\.taskRepository, AppDependencies.live.taskRepository)
 }
