@@ -21,37 +21,85 @@ enum RepeatUnit: String, CaseIterable {
     case years = "Years"
 }
 
+enum TaskSheetMode {
+    case create
+    case view(TimelineTaskModel)
+    case edit(TimelineTaskModel)
+}
+
 struct TaskSheetView: View {
+    var mode: TaskSheetMode
+    var onSave: ((TimelineTaskModel) -> Void)?
+    var onUpdate: ((TimelineTaskModel) -> Void)?
+
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.taskRepository) private var taskRepository
+    @Environment(\.contactRepository) private var contactRepository
 
     @State private var assignedContacts: [CareContact] = []
     @State private var showingHelperPicker = false
-    @State private var taskName = ""
-    @State private var taskNote = ""
-    @State private var taskDate = Date()
-    @State private var repeatOption: RepeatOption = .none
+    @State private var taskName: String
+    @State private var taskNote: String
+    @State private var taskDate: Date
+    @State private var taskEndDate: Date
+    @State private var repeatOption: RepeatOption
     @State private var showingCustomRepeat = false
     @State private var repeatInterval = 1
     @State private var repeatUnit: RepeatUnit = .weeks
-    @State private var isSaving = false
+    @State private var isEditing: Bool
+    @State private var editingTaskId: UUID?
+    @State private var editingAssigneeIDs: [UUID] = []
+
+    init(
+        mode: TaskSheetMode = .create,
+        onSave: ((TimelineTaskModel) -> Void)? = nil,
+        onUpdate: ((TimelineTaskModel) -> Void)? = nil
+    ) {
+        self.mode = mode
+        self.onSave = onSave
+        self.onUpdate = onUpdate
+
+        switch mode {
+        case .create:
+            _taskName = State(initialValue: "")
+            _taskNote = State(initialValue: "")
+            _taskDate = State(initialValue: Date())
+            _taskEndDate = State(initialValue: Calendar.current.date(byAdding: .minute, value: 30, to: Date()) ?? Date())
+            _repeatOption = State(initialValue: .none)
+            _isEditing = State(initialValue: true)
+            _editingTaskId = State(initialValue: nil)
+        case .view(let task), .edit(let task):
+            _taskName = State(initialValue: task.title)
+            _taskNote = State(initialValue: task.taskNote)
+            _taskDate = State(initialValue: task.startDate)
+            _taskEndDate = State(initialValue: task.endDate)
+            _repeatOption = State(initialValue: task.repeatOption)
+            _isEditing = State(initialValue: {
+                if case .edit = mode { return true }
+                return false
+            }())
+            _editingTaskId = State(initialValue: task.id)
+            _editingAssigneeIDs = State(initialValue: task.assigneeIDs)
+        }
+    }
+
+    private var isCreateMode: Bool {
+        if case .create = mode { return true }
+        return false
+    }
 
     private var customRepeatText: String {
         "Every \(repeatInterval) \(repeatUnit.rawValue)"
-    }
-
-    private var canSave: Bool {
-        !taskName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !isSaving
     }
 
     var body: some View {
         NavigationStack {
             Form {
                 Section("Task Name") {
-                    TextField(
-                        "e.g., Change poopie pants",
-                        text: $taskName
-                    )
+                    if isEditing {
+                        TextField("e.g., Change poopie pants", text: $taskName)
+                    } else {
+                        Text(taskName)
+                    }
                 }
 
                 Section("Assign") {
@@ -61,13 +109,11 @@ struct TaskSheetView: View {
 
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(contact.name)
-
                                 if !contact.phone.isEmpty {
                                     Text(contact.phone)
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
                                 }
-
                                 Text(contact.relationship)
                                     .font(.caption2)
                                     .foregroundStyle(.tint)
@@ -75,110 +121,140 @@ struct TaskSheetView: View {
 
                             Spacer()
 
-                            Button {
-                                assignedContacts.removeAll { $0.id == contact.id }
-                            } label: {
-                                Image(systemName: "minus.circle.fill")
-                                    .foregroundStyle(.red)
+                            if isEditing {
+                                Button {
+                                    assignedContacts.removeAll { $0.id == contact.id }
+                                } label: {
+                                    Image(systemName: "minus.circle.fill")
+                                        .foregroundStyle(.red)
+                                }
+                                .accessibilityLabel("Remove \(contact.name)")
                             }
-                            .accessibilityLabel("Remove \(contact.name)")
                         }
                     }
-                    Button {
-                        showingHelperPicker = true
-                    } label: {
-                        Label("Add Helper", systemImage: "plus.circle.fill")
+
+                    if isEditing {
+                        Button {
+                            showingHelperPicker = true
+                        } label: {
+                            Label("Add Helper", systemImage: "plus.circle.fill")
+                        }
                     }
                 }
 
                 Section("Schedule") {
-                    DatePicker(
-                        "Pick a Date",
-                        selection: $taskDate,
-                        displayedComponents: .date
-                    )
-                    .datePickerStyle(.compact)
-
-                    DatePicker(
-                        "Time",
-                        selection: $taskDate,
-                        displayedComponents: .hourAndMinute
-                    )
-                    .datePickerStyle(.wheel)
-                    .frame(height: 120)
+                    if isEditing {
+                        DatePicker("Start", selection: $taskDate, displayedComponents: [.date, .hourAndMinute])
+                            .datePickerStyle(.compact)
+                        DatePicker("End", selection: $taskEndDate, in: taskDate..., displayedComponents: [.date, .hourAndMinute])
+                            .datePickerStyle(.compact)
+                    } else {
+                        HStack {
+                            Text("Start")
+                            Spacer()
+                            Text(taskDate.formatted(date: .abbreviated, time: .shortened))
+                                .foregroundStyle(.secondary)
+                        }
+                        HStack {
+                            Text("End")
+                            Spacer()
+                            Text(taskEndDate.formatted(date: .abbreviated, time: .shortened))
+                                .foregroundStyle(.secondary)
+                        }
+                    }
                 }
 
                 Section("Repeat") {
-                    Menu {
-                        ForEach(RepeatOption.allCases.filter { $0 != .custom }, id: \.self) { option in
-                            Button {
-                                repeatOption = option
-                            } label: {
-                                if repeatOption == option {
-                                    Label(option.rawValue, systemImage: "checkmark")
-                                } else {
-                                    Text(option.rawValue)
+                    if isEditing {
+                        Menu {
+                            ForEach(RepeatOption.allCases.filter { $0 != .custom }, id: \.self) { option in
+                                Button {
+                                    repeatOption = option
+                                } label: {
+                                    if repeatOption == option {
+                                        Label(option.rawValue, systemImage: "checkmark")
+                                    } else {
+                                        Text(option.rawValue)
+                                    }
                                 }
                             }
-                        }
 
-                        Divider()
+                            Divider()
 
-                        Button {
-                            repeatOption = .custom
-                            showingCustomRepeat = true
+                            Button {
+                                repeatOption = .custom
+                                showingCustomRepeat = true
+                            } label: {
+                                if repeatOption == .custom {
+                                    Label("Custom...", systemImage: "checkmark")
+                                } else {
+                                    Text("Custom...")
+                                }
+                            }
                         } label: {
-                            if repeatOption == .custom {
-                                Label("Custom...", systemImage: "checkmark")
-                            } else {
-                                Text("Custom...")
+                            HStack {
+                                Text(repeatOption == .custom ? customRepeatText : repeatOption.rawValue)
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .foregroundStyle(.secondary)
                             }
                         }
-                    } label: {
+                    } else {
                         HStack {
-                            Text(
-                                repeatOption == .custom
-                                ? customRepeatText
-                                : repeatOption.rawValue
-                            )
-
+                            Text("Repeat")
                             Spacer()
-
-                            Image(systemName: "chevron.right")
+                            Text(repeatOption == .custom ? customRepeatText : repeatOption.rawValue)
                                 .foregroundStyle(.secondary)
                         }
                     }
                 }
 
                 Section("Notes for Helper") {
-                    TextField(
-                        "e.g., Poopie first then pants",
-                        text: $taskNote
-                    )
+                    if isEditing {
+                        TextField("e.g., Poopie first then pants", text: $taskNote)
+                    } else {
+                        Text(taskNote.isEmpty ? "No notes" : taskNote)
+                            .foregroundStyle(taskNote.isEmpty ? .secondary : .primary)
+                    }
                 }
             }
-            .navigationTitle(
-                taskName.isEmpty
-                ? "New Task"
-                : String(taskName.prefix(25))
-            )
+            .navigationTitle(navigationTitle)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("Cancel") {
-                        dismiss()
+                    Button(isEditing && !isCreateMode ? "Cancel" : "Close") {
+                        if isEditing && !isCreateMode, case .view(let task) = mode {
+                            taskName = task.title
+                            taskNote = task.taskNote
+                            taskDate = task.startDate
+                            taskEndDate = task.endDate
+                            repeatOption = task.repeatOption
+                            isEditing = false
+                        } else {
+                            dismiss()
+                        }
                     }
                     .foregroundStyle(.blue)
                 }
 
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Save") {
-                        Task { await save() }
+                    if isEditing {
+                        Button("Save") {
+                            saveTask()
+                        }
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.blue)
+                        .disabled(taskName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    } else {
+                        Button("Edit") {
+                            isEditing = true
+                        }
+                        .foregroundStyle(.blue)
                     }
-                    .fontWeight(.semibold)
-                    .foregroundStyle(.blue)
-                    .disabled(!canSave)
                 }
+            }
+            .task {
+                await loadAssignedContacts()
             }
         }
         .sheet(isPresented: $showingHelperPicker) {
@@ -191,43 +267,51 @@ struct TaskSheetView: View {
             }
         }
         .sheet(isPresented: $showingCustomRepeat) {
-            CustomRepeatView(
-                repeatInterval: $repeatInterval,
-                repeatUnit: $repeatUnit
-            )
+            CustomRepeatView(repeatInterval: $repeatInterval, repeatUnit: $repeatUnit)
         }
     }
 
-    private func save() async {
-        let trimmedTitle = taskName.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmedTitle.isEmpty else { return }
+    private var navigationTitle: String {
+        if isCreateMode {
+            return taskName.isEmpty ? "New Task" : String(taskName.prefix(25))
+        }
+        return String(taskName.prefix(25))
+    }
 
-        isSaving = true
-        defer { isSaving = false }
+    private func loadAssignedContacts() async {
+        guard !editingAssigneeIDs.isEmpty else { return }
+        var loaded: [CareContact] = []
+        for id in editingAssigneeIDs {
+            if let contact = try? await contactRepository.contact(id: id) {
+                loaded.append(contact)
+            }
+        }
+        assignedContacts = loaded
+    }
 
+    private func saveTask() {
         let assigneeIDs = assignedContacts.map(\.id)
-        let task = CareTask(
-            title: trimmedTitle,
-            scheduledAt: taskDate,
-            durationMinutes: 30,
-            instructions: taskNote.trimmingCharacters(in: .whitespacesAndNewlines),
-            careTeamID: SeedData.careTeamID,
-            patientID: SeedData.patientID,
-            assigneeIDs: assigneeIDs,
-            recurrence: TaskRecurrence.from(
-                repeatOption: repeatOption,
-                interval: repeatInterval,
-                unit: repeatUnit
-            ),
-            createdByID: SeedData.primaryCaregiverID
+        let initials = assignedContacts.first?.initials
+
+        var timelineModel = TimelineTaskModel(
+            id: editingTaskId ?? UUID(),
+            startDate: taskDate,
+            endDate: taskEndDate,
+            title: taskName.trimmingCharacters(in: .whitespacesAndNewlines),
+            initials: initials,
+            hasRepeatIcon: repeatOption != .none,
+            state: assigneeIDs.isEmpty ? .pending : .assigned,
+            taskNote: taskNote.trimmingCharacters(in: .whitespacesAndNewlines),
+            repeatOption: repeatOption,
+            assigneeIDs: assigneeIDs
         )
 
-        do {
-            try await taskRepository.saveTask(task)
-            dismiss()
-        } catch {
-            // Keep sheet open on failure; Milestone 2 can surface an alert.
+        if isCreateMode {
+            onSave?(timelineModel)
+        } else {
+            onUpdate?(timelineModel)
         }
+        dismiss()
     }
 }
 

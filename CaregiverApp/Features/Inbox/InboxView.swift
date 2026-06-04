@@ -106,26 +106,18 @@ struct InboxRow: View {
             
             Spacer()
             
-            HStack(spacing: 8) {
-                Button("Accept") {
+            HStack(spacing: 12) {
+                Button(action: {}) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.title2)
+                        .foregroundColor(.green)
                 }
-                .font(.caption)
-                .fontWeight(.bold)
-                .foregroundColor(.white)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .background(Color(red: 0.1, green: 0.2, blue: 0.4))
-                .clipShape(Capsule())
                 
-                Button("Decline") {
+                Button(action: {}) {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.title2)
+                        .foregroundColor(.red)
                 }
-                .font(.caption)
-                .fontWeight(.bold)
-                .foregroundColor(.black)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .background(Color.gray.opacity(0.2))
-                .clipShape(Capsule())
             }
         }
         .padding(.horizontal)

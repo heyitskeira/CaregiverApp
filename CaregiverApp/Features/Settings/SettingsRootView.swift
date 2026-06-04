@@ -1,6 +1,13 @@
 import SwiftUI
 
 struct SettingsRootView: View {
+    enum Language: String, CaseIterable, Identifiable {
+        case English, Indonesian, Dutch, Spanish
+        var id: Self { self }
+    }
+
+    @State private var selectedLanguage: Language = .English
+
     var body: some View {
         List {
             Section {
@@ -11,17 +18,30 @@ struct SettingsRootView: View {
 
             CareGroupSection()
 
+            Section {
+                NavigationLink {
+                    PatientdetailView(patientdetail: SeedData.patient)
+                } label: {
+                    Text("View Patient")
+                }
+            }
+
             Section(header: Text("Preferences")) {
                 NavigationLink {
                     NotifsettingView()
                 } label: {
                     PreferenceList(menuImage: "bell", menuName: "Notification Presferences")
                 }
-                NavigationLink {
-                    LangsettingView()
-                } label: {
+
+                HStack {
                     PreferenceList(menuImage: "globe", menuName: "Language")
+                    Picker("", selection: $selectedLanguage) {
+                        ForEach(Language.allCases) { language in
+                            Text(language.rawValue).tag(language)
+                        }
+                    }
                 }
+
                 NavigationLink {
                     PnSsetting()
                 } label: {

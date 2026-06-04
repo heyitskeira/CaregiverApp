@@ -5,52 +5,67 @@ extension CareTask {
     func timelinePresentation(contactsByID: [UUID: CareContact]) -> TimelineTaskModel {
         let calendar = Calendar.current
         let endDate = calendar.date(byAdding: .minute, value: durationMinutes, to: scheduledAt) ?? scheduledAt
-
-        let timeFormatter = DateFormatter()
-        timeFormatter.dateFormat = "HH.mm"
-
         let primaryAssignee = assigneeIDs.first.flatMap { contactsByID[$0] }
-        let isCompleted = status == .completed
         let isUnassigned = assigneeIDs.isEmpty
 
         return TimelineTaskModel(
             id: id,
-            startTime: timeFormatter.string(from: scheduledAt),
-            endTime: timeFormatter.string(from: endDate),
-            duration: Self.durationLabel(minutes: durationMinutes),
+            startDate: scheduledAt,
+            endDate: endDate,
             title: title,
             initials: primaryAssignee?.initials,
-            isCompleted: isCompleted,
             hasRepeatIcon: recurrence.repeats,
-            color: Self.timelineColor(isCompleted: isCompleted, isUnassigned: isUnassigned),
-            iconSystemName: isUnassigned ? "person.badge.plus" : nil
+            iconSystemName: isUnassigned ? "person.badge.plus" : nil,
+            state: taskState,
+            taskNote: instructions,
+            repeatOption: recurrence.repeatOption,
+            assigneeIDs: assigneeIDs
         )
     }
 
-    private static func durationLabel(minutes: Int) -> String {
-        if minutes >= 60, minutes % 60 == 0 {
-            let hours = minutes / 60
-            return hours == 1 ? "1 hr" : "\(hours) hr"
+    private var taskState: TaskState {
+        switch status {
+        case .completed:
+            return .completed
+        case .unassigned:
+            return .pending
+        case .assigned:
+            return .assigned
         }
-        return "\(minutes) min"
     }
 
-    private static func timelineColor(isCompleted: Bool, isUnassigned: Bool) -> Color {
-        if isCompleted {
-            return .gray.opacity(0.7)
-        }
-        if isUnassigned {
-            return .gray.opacity(0.7)
-        }
-        return .green.opacity(0.7)
+    static func from(
+        timelineModel: TimelineTaskModel,
+        careTeamID: UUID = SeedData.careTeamID,
+        patientID: UUID = SeedData.patientID,
+        createdByID: UUID = SeedData.primaryCaregiverID
+    ) -> CareTask {
+        let durationMinutes = max(
+            1,
+            Int(timelineModel.endDate.timeIntervalSince(timelineModel.startDate) / 60)
+        )
+
+        return CareTask(
+            id: timelineModel.id,
+            title: timelineModel.title,
+            scheduledAt: timelineModel.startDate,
+            durationMinutes: durationMinutes,
+            instructions: timelineModel.taskNote,
+            careTeamID: careTeamID,
+            patientID: patientID,
+            assigneeIDs: timelineModel.assigneeIDs,
+            status: timelineModel.isCompleted ? .completed : (timelineModel.assigneeIDs.isEmpty ? .unassigned : .assigned),
+            recurrence: TaskRecurrence.from(repeatOption: timelineModel.repeatOption),
+            createdByID: createdByID
+        )
     }
 }
 
 extension TaskRecurrence {
     static func from(
         repeatOption: RepeatOption,
-        interval: Int,
-        unit: RepeatUnit
+        interval: Int = 1,
+        unit: RepeatUnit = .weeks
     ) -> TaskRecurrence {
         switch repeatOption {
         case .none:
@@ -69,6 +84,23 @@ extension TaskRecurrence {
                 interval: interval,
                 unit: unit.recurrenceUnit
             )
+        }
+    }
+
+    var repeatOption: RepeatOption {
+        switch frequency {
+        case .none:
+            return .none
+        case .daily:
+            return .daily
+        case .weekly:
+            return .weekly
+        case .monthly:
+            return .monthly
+        case .yearly:
+            return .yearly
+        case .custom:
+            return .custom
         }
     }
 }
