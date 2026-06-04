@@ -18,9 +18,16 @@ struct AddLogSheetView: View {
     @State private var selectedPhotos: [PhotosPickerItem] = []
     @State private var selectedImages: [UIImage] = []
     
+    let onUpload: (Log) -> Void
+    
+    private let currentUser = CareContact(
+        name: "Sarah Antoso",
+        relationship: "Primary Caregiver"
+    )
+    
     var body: some View {
         NavigationStack{
-            VStack{
+            ScrollView{
                 VStack(alignment: .leading, spacing: 16) {
                     
                     Divider()
@@ -34,7 +41,7 @@ struct AddLogSheetView: View {
                         VStack(alignment: .leading, spacing: 8) {
                             
                             VStack(alignment: .leading){
-                                Text("Sarah Antoso")
+                                Text(currentUser.name)
                                     .fontWeight(.semibold)
                                 
                                 TextField(
@@ -53,42 +60,59 @@ struct AddLogSheetView: View {
                                     .foregroundStyle(.secondary)
                             }
                             
-                            ForEach(selectedImages.indices, id: \.self) { index in
+                            if !selectedImages.isEmpty {
 
-                                ZStack(alignment: .topTrailing) {
+                                ScrollView(.horizontal, showsIndicators: false) {
 
-                                    Image(uiImage: selectedImages[index])
-                                        .resizable()
-                                        .scaledToFill()
-                                        .frame(width: .infinity, height: 120)
-                                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                                    HStack(spacing: 12) {
 
-                                    Button {
+                                        ForEach(selectedImages.indices, id: \.self) { index in
 
-                                        selectedImages.remove(at: index)
-                                        selectedPhotos.remove(at: index)
-                                        
-                                    } label: {
+                                            ZStack(alignment: .topTrailing) {
 
-                                        Image(systemName: "xmark.circle.fill")
-                                            .font(.title3)
-                                            .foregroundStyle(.white)
+                                                Image(uiImage: selectedImages[index])
+                                                    .resizable()
+                                                    .scaledToFill()
+                                                    .frame(width: 180, height: 120)
+                                                    .clipped()
+                                                    .clipShape(
+                                                        RoundedRectangle(cornerRadius: 12)
+                                                    )
+
+                                                Button {
+
+                                                    selectedImages.remove(at: index)
+                                                    selectedPhotos.remove(at: index)
+
+                                                } label: {
+
+                                                    Image(systemName: "xmark.circle.fill")
+                                                        .font(.title3)
+                                                        .foregroundStyle(.white)
+
+                                                }
+                                                .padding(8)
+
+                                            }
+
+                                        }
+
                                     }
-                                    .padding(.horizontal, 5)
-                                    .padding(.vertical, 5)
+
                                 }
+
                             }
                             
-                            PhotosPicker(
-                                selection: $selectedPhotos,
-                                maxSelectionCount: 5,
-                                matching: .images
-                            ) {
-                                
-                                Image(systemName: "photo")
-                                    .font(.title2)
-                                    .foregroundStyle(.secondary)
-                            }
+//                            PhotosPicker(
+//                                selection: $selectedPhotos,
+//                                maxSelectionCount: 5,
+//                                matching: .images
+//                            ) {
+//                                
+//                                Image(systemName: "photo")
+//                                    .font(.title2)
+//                                    .foregroundStyle(.secondary)
+//                            }
                         }
                     }
                     Spacer()
@@ -112,11 +136,48 @@ struct AddLogSheetView: View {
                 ToolbarItem(
                     placement: .topBarTrailing
                 ) {
-
-                    Button{} label:{
+                    Button {
+                        let newLog = Log(
+                            author: currentUser,
+                            content: logContent,
+                            images: selectedImages
+                        )
+                        onUpload(newLog)
+                        dismiss()
+                    } label: {
                         Text("Upload")
                     }
+                    .disabled(
+                        logContent.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                        && selectedImages.isEmpty
+                    )
                 }
+            }
+            .safeAreaInset(edge: .bottom) {
+
+                HStack {
+
+                    Spacer()
+
+                    PhotosPicker(
+                        selection: $selectedPhotos,
+                        maxSelectionCount: 5,
+                        matching: .images
+                    ) {
+
+                        Image(systemName: "photo")
+                            .font(.title2)
+                            .padding(16)
+
+                    }
+                    .background(.regularMaterial)
+                    .clipShape(Circle())
+                    .shadow(radius: 4)
+
+                }
+                .padding(.horizontal)
+                .padding(.bottom, 8)
+
             }
             .onChange(of: selectedPhotos) {
                 Task {
@@ -135,5 +196,7 @@ struct AddLogSheetView: View {
 }
 
 #Preview {
-    AddLogSheetView()
+    AddLogSheetView { _ in
+
+    }
 }
