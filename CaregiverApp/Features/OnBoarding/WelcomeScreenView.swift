@@ -3,9 +3,6 @@ import SwiftUI
 struct WelcomeScreenView: View {
     var body: some View {
         ZStack {
-            // Background gradient and shapes
-            Color(red: 234 / 255, green: 241 / 255, blue: 250 / 255).ignoresSafeArea()
-            
             GeometryReader { geo in
                 // Decorative shapes (mimic blob/wave background)
                 Ellipse()
