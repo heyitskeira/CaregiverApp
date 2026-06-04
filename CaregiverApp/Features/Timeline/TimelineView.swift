@@ -1,3 +1,10 @@
+//
+//  TimelineView.swift
+//  CaregiverApp
+//
+//  Main timeline view showing tasks for the selected day.
+//
+
 import SwiftUI
 import Combine
 
@@ -78,101 +85,19 @@ struct TimelineView: View {
         return offset + 10
     }
 
-    private func weekDates(around date: Date) -> [Date] {
-        let weekday = calendar.component(.weekday, from: date)
-        let sundayOffset = -(weekday - 1)
-        guard let sunday = calendar.date(byAdding: .day, value: sundayOffset, to: date) else {
-            return []
-        }
-        return (0..<7).compactMap { calendar.date(byAdding: .day, value: $0, to: sunday) }
-    }
-
     var body: some View {
         VStack(spacing: 0) {
-            headerSection
-            weekCalendarSection
-            Divider().padding(.vertical, 16)
+            TimelineHeaderSection(selectedDate: selectedDate)
+            WeekCalendarSection(selectedDate: $selectedDate)
+            Divider()
+                .overlay(AppTheme.divider)
+                .padding(.vertical, 16)
             timelineScrollSection
         }
+        .background(AppTheme.pageBackground)
         .onReceive(timer) { _ in
             currentTime = Date()
         }
-    }
-
-    private var headerSection: some View {
-        HStack {
-            HStack(spacing: 8) {
-                Text(selectedDate.formatted(.dateTime.day().month(.wide)))
-                    .font(.title2)
-                    .fontWeight(.bold)
-                Text(selectedDate.formatted(.dateTime.year()))
-                    .font(.title2)
-                    .foregroundStyle(.gray)
-                Image(systemName: "chevron.right")
-                    .font(.title3)
-                    .fontWeight(.bold)
-            }
-            Spacer()
-
-            NavigationLink(destination: InboxView()) {
-                Image(systemName: "tray.fill")
-                    .font(.title2)
-                    .foregroundColor(.black)
-                    .padding(12)
-                    .background(Color.gray.opacity(0.15))
-                    .clipShape(Circle())
-                    .overlay(alignment: .topTrailing) {
-                        Circle()
-                            .fill(.red)
-                            .frame(width: 12, height: 12)
-                            .offset(x: 0, y: 0)
-                    }
-            }
-        }
-        .padding(.horizontal)
-        .padding(.top, 16)
-    }
-
-    private var weekCalendarSection: some View {
-        HStack {
-            let week = weekDates(around: selectedDate)
-            let dayFormatter: DateFormatter = {
-                let f = DateFormatter()
-                f.dateFormat = "EEE"
-                return f
-            }()
-
-            ForEach(week, id: \.self) { day in
-                let isSelected = calendar.isDate(day, inSameDayAs: selectedDate)
-                let isToday = calendar.isDateInToday(day)
-
-                Button(action: {
-                    selectedDate = day
-                }) {
-                    VStack(spacing: 8) {
-                        Text(dayFormatter.string(from: day).uppercased())
-                            .font(.caption2)
-                            .fontWeight(.semibold)
-                            .foregroundStyle(.gray.opacity(0.8))
-
-                        Text("\(calendar.component(.day, from: day))")
-                            .font(.headline)
-                            .fontWeight(isSelected ? .bold : .semibold)
-                            .foregroundStyle(isSelected ? Color.accentColor : (isToday ? Color.accentColor.opacity(0.7) : .primary))
-                            .frame(width: 36, height: 36)
-                            .background {
-                                if isSelected {
-                                    Circle().fill(Color.accentColor.opacity(0.15))
-                                }
-                            }
-                    }
-                }
-                .buttonStyle(.plain)
-                if day != week.last { Spacer() }
-            }
-        }
-        .padding(.horizontal, 24)
-        .padding(.top, 16)
     }
 
     private var timelineScrollSection: some View {
@@ -188,6 +113,12 @@ struct TimelineView: View {
                             rowHeight: height,
                             onToggleComplete: {
                                 toggleTask(task)
+                            },
+                            onAccept: {
+                                acceptTask(task)
+                            },
+                            onDecline: {
+                                declineTask(task)
                             },
                             onTap: {
                                 onTaskTapped?(task)
@@ -216,34 +147,15 @@ struct TimelineView: View {
             tasks[idx].state = .completed
         }
     }
-}
 
-struct CurrentTimeIndicator: View {
-    var currentTime: Date
-
-    private var timeString: String {
-        let f = DateFormatter()
-        f.dateFormat = "HH:mm"
-        return f.string(from: currentTime)
+    private func acceptTask(_ task: TimelineTaskModel) {
+        guard let idx = tasks.firstIndex(where: { $0.id == task.id }) else { return }
+        tasks[idx].state = .assigned
     }
 
-    var body: some View {
-        HStack(spacing: 0) {
-            Text(timeString)
-                .font(.caption2)
-                .fontWeight(.bold)
-                .foregroundColor(.white)
-                .padding(.horizontal, 6)
-                .padding(.vertical, 3)
-                .background(Color.red)
-                .clipShape(Capsule())
-                .padding(.leading, 8)
-
-            Rectangle()
-                .fill(Color.red)
-                .frame(height: 1.5)
-                .padding(.trailing, 24)
-        }
+    private func declineTask(_ task: TimelineTaskModel) {
+        guard let idx = tasks.firstIndex(where: { $0.id == task.id }) else { return }
+        tasks.remove(at: idx)
     }
 }
 

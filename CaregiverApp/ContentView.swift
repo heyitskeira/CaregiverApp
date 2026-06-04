@@ -52,7 +52,7 @@ struct ContentView: View {
             TimelineTaskModel(
                 startDate: TimelineTaskModel.makeDate(hour: 5, minute: 0, from: today),
                 endDate: TimelineTaskModel.makeDate(hour: 5, minute: 30, from: today),
-                title: "Prepare Bfast",
+                title: "Prep Breakfast",
                 initials: "AA",
                 hasRepeatIcon: true,
                 state: .completed
@@ -61,7 +61,7 @@ struct ContentView: View {
                 startDate: TimelineTaskModel.makeDate(hour: 6, minute: 0, from: today),
                 endDate: TimelineTaskModel.makeDate(hour: 6, minute: 15, from: today),
                 title: "Change Diaper",
-                initials: "AA",
+                initials: "J",
                 hasRepeatIcon: true,
                 state: .completed
             ),
@@ -69,7 +69,7 @@ struct ContentView: View {
                 startDate: TimelineTaskModel.makeDate(hour: 6, minute: 15, from: today),
                 endDate: TimelineTaskModel.makeDate(hour: 6, minute: 30, from: today),
                 title: "Give Meds",
-                initials: "AA",
+                initials: "B",
                 hasRepeatIcon: true,
                 state: .completed
             ),

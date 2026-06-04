@@ -2,7 +2,7 @@
 //  TaskSheetView.swift
 //  CaregiverApp
 //
-//  Created by Christopher Jonathan on 27/05/26.
+//  Task detail/creation sheet with custom layout matching the design.
 //
 
 import SwiftUI
@@ -18,7 +18,6 @@ enum RepeatOption: String, CaseIterable {
 
 struct Helper: Identifiable {
     let id = UUID()
-
     let name: String
     let phoneNumber: String
     let role: String
@@ -106,223 +105,121 @@ struct TaskSheetView: View {
 
     @State private var taskName: String
     @State private var taskNote: String
-
     @State private var taskDate: Date
     @State private var taskEndDate: Date
-
     @State private var repeatOption: RepeatOption
-
     @State private var showingCustomRepeat = false
-
     @State private var repeatInterval = 1
-
     @State private var repeatUnit: RepeatUnit = .weeks
-
     @State private var isEditing: Bool
     @State private var editingTaskId: UUID?
+    @State private var attachedImages: [UIImage] = []
 
     private var isCreateMode: Bool {
         if case .create = mode { return true }
         return false
     }
 
-    private var customRepeatText: String {
-        "Every \(repeatInterval) \(repeatUnit.rawValue)"
+    private var headerTitle: String {
+        if isCreateMode {
+            return "New Task"
+        }
+        return "Details"
     }
 
     var body: some View {
-        NavigationStack {
-            Form {
-                Section("Task Name") {
-                    if isEditing {
-                        TextField(
-                            "e.g., Change poopie pants",
-                            text: $taskName
-                        )
-                    } else {
-                        Text(taskName)
-                            .foregroundStyle(.primary)
-                    }
-                }
-
-                Section("Assign") {
-                    ForEach(assignedHelpers, id: \.phoneNumber) { helper in
-                        HStack {
-                            Image(systemName: "person.crop.circle.fill")
-                                .font(.system(size: 40))
-
-                            VStack(alignment: .leading) {
-                                Text(helper.name)
-
-                                Text(helper.phoneNumber)
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-
-                                Text(helper.role)
-                                    .font(.caption2)
-                                    .foregroundStyle(.blue)
-                            }
-
-                            Spacer()
-
-                            if isEditing {
-                                Button {
-                                    assignedHelpers.removeAll {
-                                        $0.phoneNumber == helper.phoneNumber
-                                    }
-                                } label: {
-                                    Image(systemName: "minus.circle.fill")
-                                        .foregroundStyle(.red)
-                                }
-                            }
+        VStack(spacing: 0) {
+            // Custom header
+            TaskSheetHeader(
+                title: headerTitle,
+                isEditing: isEditing,
+                onClose: {
+                    if isEditing && !isCreateMode {
+                        // Cancel editing, restore original values
+                        if case .view(let task) = mode {
+                            taskName = task.title
+                            taskNote = task.taskNote
+                            taskDate = task.startDate
+                            taskEndDate = task.endDate
+                            repeatOption = task.repeatOption
                         }
+                        isEditing = false
+                    } else {
+                        dismiss()
                     }
+                },
+                onSave: {
                     if isEditing {
-                        Button {
+                        saveTask()
+                    } else {
+                        isEditing = true
+                    }
+                },
+                isSaveDisabled: isEditing && taskName.trimmingCharacters(in: .whitespaces).isEmpty
+            )
+
+            Divider()
+                .overlay(AppTheme.divider)
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: 24) {
+                    // Task icon + name (centered)
+                    taskIconAndName
+                        .frame(maxWidth: .infinity)
+
+                    Divider()
+                        .overlay(AppTheme.divider)
+                        .padding(.horizontal)
+
+                    // Date & Time
+                    TaskDateTimeSection(
+                        isEditing: isEditing,
+                        startDate: $taskDate,
+                        endDate: $taskEndDate,
+                        repeatOption: $repeatOption,
+                        onShowCustomRepeat: {
+                            showingCustomRepeat = true
+                        }
+                    )
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                    // Separator dash
+                    HStack {
+                        Text("—")
+                            .foregroundStyle(AppTheme.secondaryText)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.horizontal)
+
+                    // Assign to
+                    TaskAssignSection(
+                        isEditing: isEditing,
+                        assignedHelpers: $assignedHelpers,
+                        availableHelpers: availableHelpers,
+                        onShowHelperPicker: {
                             showingHelperPicker = true
-                        } label: {
-                            Label("Add Helper", systemImage: "plus.circle.fill")
                         }
-                    }
+                    )
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                    Divider()
+                        .overlay(AppTheme.divider)
+                        .padding(.horizontal)
+
+                    // Attachment & Notes
+                    TaskAttachmentSection(
+                        isEditing: isEditing,
+                        taskNote: $taskNote,
+                        attachedImages: $attachedImages
+                    )
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                    Spacer(minLength: 40)
                 }
-
-                Section("Schedule") {
-                    if isEditing {
-                        DatePicker(
-                            "Start",
-                            selection: $taskDate,
-                            displayedComponents: [.date, .hourAndMinute]
-                        )
-                        .datePickerStyle(.compact)
-
-                        DatePicker(
-                            "End",
-                            selection: $taskEndDate,
-                            in: taskDate...,
-                            displayedComponents: [.date, .hourAndMinute]
-                        )
-                        .datePickerStyle(.compact)
-                    } else {
-                        HStack {
-                            Text("Start")
-                            Spacer()
-                            Text(taskDate.formatted(date: .abbreviated, time: .shortened))
-                                .foregroundStyle(.secondary)
-                        }
-                        HStack {
-                            Text("End")
-                            Spacer()
-                            Text(taskEndDate.formatted(date: .abbreviated, time: .shortened))
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                }
-
-                Section("Repeat") {
-                    if isEditing {
-                        Menu {
-                            ForEach(RepeatOption.allCases.filter { $0 != .custom }, id: \.self) { option in
-                                Button {
-                                    repeatOption = option
-                                } label: {
-                                    if repeatOption == option {
-                                        Label(option.rawValue, systemImage: "checkmark")
-                                    } else {
-                                        Text(option.rawValue)
-                                    }
-                                }
-                            }
-
-                            Divider()
-
-                            Button {
-                                repeatOption = .custom
-                                showingCustomRepeat = true
-                            } label: {
-                                if repeatOption == .custom {
-                                    Label("Custom...", systemImage: "checkmark")
-                                } else {
-                                    Text("Custom...")
-                                }
-                            }
-                        } label: {
-                            HStack {
-                                Text(
-                                    repeatOption == .custom
-                                    ? customRepeatText
-                                    : repeatOption.rawValue
-                                )
-
-                                Spacer()
-
-                                Image(systemName: "chevron.right")
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                    } else {
-                        HStack {
-                            Text("Repeat")
-                            Spacer()
-                            Text(
-                                repeatOption == .custom
-                                ? customRepeatText
-                                : repeatOption.rawValue
-                            )
-                            .foregroundStyle(.secondary)
-                        }
-                    }
-                }
-
-                Section("Notes for Helper") {
-                    if isEditing {
-                        TextField(
-                            "e.g., Poopie first then pants",
-                            text: $taskNote
-                        )
-                    } else {
-                        Text(taskNote.isEmpty ? "No notes" : taskNote)
-                            .foregroundStyle(taskNote.isEmpty ? .secondary : .primary)
-                    }
-                }
-            }
-            .navigationTitle(navigationTitle)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button(isEditing && !isCreateMode ? "Cancel" : "Close") {
-                        if isEditing && !isCreateMode {
-                            if case .view(let task) = mode {
-                                taskName = task.title
-                                taskNote = task.taskNote
-                                taskDate = task.startDate
-                                taskEndDate = task.endDate
-                                repeatOption = task.repeatOption
-                            }
-                            isEditing = false
-                        } else {
-                            dismiss()
-                        }
-                    }
-                    .foregroundStyle(.blue)
-                }
-
-                ToolbarItem(placement: .topBarTrailing) {
-                    if isEditing {
-                        Button("Save") {
-                            saveTask()
-                        }
-                        .fontWeight(.semibold)
-                        .foregroundStyle(.blue)
-                        .disabled(taskName.trimmingCharacters(in: .whitespaces).isEmpty)
-                    } else {
-                        Button("Edit") {
-                            isEditing = true
-                        }
-                        .foregroundStyle(.blue)
-                    }
-                }
+                .padding(.top, 16)
             }
         }
+        .background(AppTheme.pageBackground)
         .sheet(isPresented: $showingHelperPicker) {
             HelperPickerView(
                 availableHelpers: availableHelpers
@@ -342,14 +239,34 @@ struct TaskSheetView: View {
         }
     }
 
-    private var navigationTitle: String {
-        if isCreateMode {
-            return taskName.isEmpty ? "New Task" : String(taskName.prefix(25))
-        } else {
-            return String(taskName.prefix(25))
+    // MARK: - Task Icon & Name
+    private var taskIconAndName: some View {
+        VStack(spacing: 12) {
+            // Person icon in peach circle
+            Image(systemName: "person.fill")
+                .font(.title)
+                .foregroundColor(.white)
+                .frame(width: 60, height: 60)
+                .background(AppTheme.accentPeach)
+                .clipShape(Circle())
+
+            if isEditing {
+                TextField("Task Name", text: $taskName)
+                    .font(.title2)
+                    .fontWeight(.bold)
+                    .multilineTextAlignment(.center)
+                    .foregroundStyle(AppTheme.primaryText)
+                    .padding(.horizontal, 40)
+            } else {
+                Text(taskName)
+                    .font(.title2)
+                    .fontWeight(.bold)
+                    .foregroundStyle(AppTheme.primaryText)
+            }
         }
     }
 
+    // MARK: - Save
     private func saveTask() {
         if isCreateMode {
             let initials = assignedHelpers.first.map { helper in
