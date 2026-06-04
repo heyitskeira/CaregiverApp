@@ -21,17 +21,18 @@ final class MockContactRepository: ContactRepository {
     func saveContact(_ contact: CareContact) async throws {
         if let systemID = contact.systemContactIdentifier,
            let index = contacts.firstIndex(where: { $0.systemContactIdentifier == systemID }) {
-            var updated = contact
-            updated = CareContact(
-                id: contacts[index].id,
+            let existing = contacts[index]
+            contacts[index] = CareContact(
+                id: existing.id,
+                careTeamID: contact.careTeamID,
                 name: contact.name,
                 relationship: contact.relationship,
                 phone: contact.phone,
                 email: contact.email,
                 avatarSymbolName: contact.avatarSymbolName,
-                systemContactIdentifier: contact.systemContactIdentifier
+                systemContactIdentifier: contact.systemContactIdentifier,
+                linkedUserID: contact.linkedUserID ?? existing.linkedUserID
             )
-            contacts[index] = updated
             return
         }
 

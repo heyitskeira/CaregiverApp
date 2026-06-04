@@ -2,8 +2,6 @@
 //  TaskSheetView.swift
 //  CaregiverApp
 //
-//  Created by Christopher Jonathan on 27/05/26.
-//
 
 import SwiftUI
 
@@ -24,46 +22,38 @@ enum RepeatUnit: String, CaseIterable {
 }
 
 struct TaskSheetView: View {
-    
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.taskRepository) private var taskRepository
+
     @State private var assignedContacts: [CareContact] = []
     @State private var showingHelperPicker = false
-    
-    @Environment(\.dismiss) private var dismiss
-    
-    //Task Title
-    @State private var taskName: String = ""
-    @State private var taskNote: String = ""
-    
-    //Task Date
+    @State private var taskName = ""
+    @State private var taskNote = ""
     @State private var taskDate = Date()
-    
-    //Task Repitition
     @State private var repeatOption: RepeatOption = .none
-
     @State private var showingCustomRepeat = false
-
     @State private var repeatInterval = 1
-
     @State private var repeatUnit: RepeatUnit = .weeks
-    
+    @State private var isSaving = false
+
     private var customRepeatText: String {
         "Every \(repeatInterval) \(repeatUnit.rawValue)"
     }
-    
+
+    private var canSave: Bool {
+        !taskName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !isSaving
+    }
+
     var body: some View {
-        NavigationStack{
-            Form{
-                //Text Field for Task Name
+        NavigationStack {
+            Form {
                 Section("Task Name") {
                     TextField(
                         "e.g., Change poopie pants",
                         text: $taskName
                     )
                 }
-                
-                //Per View would have a Title, then the Main Function
-                
-                //Assign People
+
                 Section("Assign") {
                     ForEach(assignedContacts) { contact in
                         HStack(spacing: 12) {
@@ -100,16 +90,15 @@ struct TaskSheetView: View {
                         Label("Add Helper", systemImage: "plus.circle.fill")
                     }
                 }
-                
-                //Date & Time
-                Section("Schedule"){
+
+                Section("Schedule") {
                     DatePicker(
                         "Pick a Date",
                         selection: $taskDate,
                         displayedComponents: .date
                     )
                     .datePickerStyle(.compact)
-                    
+
                     DatePicker(
                         "Time",
                         selection: $taskDate,
@@ -118,11 +107,10 @@ struct TaskSheetView: View {
                     .datePickerStyle(.wheel)
                     .frame(height: 120)
                 }
-                
-                //Reapetition Choice
+
                 Section("Repeat") {
                     Menu {
-                        ForEach(RepeatOption.allCases.filter { $0 != .custom }  , id: \.self) { option in
+                        ForEach(RepeatOption.allCases.filter { $0 != .custom }, id: \.self) { option in
                             Button {
                                 repeatOption = option
                             } label: {
@@ -153,7 +141,7 @@ struct TaskSheetView: View {
                                 ? customRepeatText
                                 : repeatOption.rawValue
                             )
-                            
+
                             Spacer()
 
                             Image(systemName: "chevron.right")
@@ -161,38 +149,35 @@ struct TaskSheetView: View {
                         }
                     }
                 }
-                
-                //Text Field for Notes
-                Section("Notes for Helper"){
+
+                Section("Notes for Helper") {
                     TextField(
                         "e.g., Poopie first then pants",
                         text: $taskNote
                     )
                 }
             }
-            //Sticky Title (Task Name)
             .navigationTitle(
                 taskName.isEmpty
                 ? "New Task"
                 : String(taskName.prefix(25))
             )
             .navigationBarTitleDisplayMode(.inline)
-            
-            //Cancel & Done Button
-            .toolbar{
+            .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Cancel") {
                         dismiss()
                     }
                     .foregroundStyle(.blue)
                 }
-                
+
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Save") {
-                        dismiss()
+                        Task { await save() }
                     }
                     .fontWeight(.semibold)
                     .foregroundStyle(.blue)
+                    .disabled(!canSave)
                 }
             }
         }
@@ -206,19 +191,48 @@ struct TaskSheetView: View {
             }
         }
         .sheet(isPresented: $showingCustomRepeat) {
-
             CustomRepeatView(
                 repeatInterval: $repeatInterval,
                 repeatUnit: $repeatUnit
             )
-
         }
     }
-    
-}
 
+    private func save() async {
+        let trimmedTitle = taskName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedTitle.isEmpty else { return }
+
+        isSaving = true
+        defer { isSaving = false }
+
+        let assigneeIDs = assignedContacts.map(\.id)
+        let task = CareTask(
+            title: trimmedTitle,
+            scheduledAt: taskDate,
+            durationMinutes: 30,
+            instructions: taskNote.trimmingCharacters(in: .whitespacesAndNewlines),
+            careTeamID: SeedData.careTeamID,
+            patientID: SeedData.patientID,
+            assigneeIDs: assigneeIDs,
+            recurrence: TaskRecurrence.from(
+                repeatOption: repeatOption,
+                interval: repeatInterval,
+                unit: repeatUnit
+            ),
+            createdByID: SeedData.primaryCaregiverID
+        )
+
+        do {
+            try await taskRepository.saveTask(task)
+            dismiss()
+        } catch {
+            // Keep sheet open on failure; Milestone 2 can surface an alert.
+        }
+    }
+}
 
 #Preview {
     TaskSheetView()
         .environment(\.contactRepository, AppDependencies.live.contactRepository)
+        .environment(\.taskRepository, AppDependencies.live.taskRepository)
 }

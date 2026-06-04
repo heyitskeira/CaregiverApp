@@ -1,27 +1,19 @@
 import SwiftUI
 
 struct TimelineView: View {
+    @Environment(\.taskRepository) private var taskRepository
+    @Environment(\.contactRepository) private var contactRepository
+
+    let reloadToken: UUID
+
+    @State private var store: TimelineStore?
     @State private var selectedTab = 0
-    
-    let allTasks: [TimelineTaskModel] = [
-        TimelineTaskModel(startTime: "05.00", endTime: "05.30", duration: "30 min", title: "Prep", initials: "AA", isCompleted: true, hasRepeatIcon: true, color: .red.opacity(0.9), iconSystemName: nil),
-        TimelineTaskModel(startTime: "06.00", endTime: "06.15", duration: "15 min", title: "Change", initials: "AA", isCompleted: true, hasRepeatIcon: true, color: .green.opacity(0.7), iconSystemName: nil),
-        TimelineTaskModel(startTime: "06.15", endTime: "06.30", duration: "15 min", title: "Give Meds", initials: "AA", isCompleted: true, hasRepeatIcon: true, color: .green.opacity(0.7), iconSystemName: nil),
-        TimelineTaskModel(startTime: "06.30", endTime: "07.30", duration: "1 hr", title: "Give Bfast", initials: "SA", isCompleted: true, hasRepeatIcon: true, color: .green.opacity(0.7), iconSystemName: nil),
-        TimelineTaskModel(startTime: "09.00", endTime: "10.00", duration: "1 hr", title: "Give Bath", initials: "SA", isCompleted: false, hasRepeatIcon: true, color: .gray.opacity(0.7), iconSystemName: nil),
-        TimelineTaskModel(startTime: "13.00", endTime: "15.00", duration: "2 hr", title: "Hospital Visit", initials: nil, isCompleted: false, hasRepeatIcon: false, color: .gray.opacity(0.7), iconSystemName: "person.badge.plus")
-    ]
-    
-    let myTasks: [TimelineTaskModel] = [
-        TimelineTaskModel(startTime: "13.00", endTime: "15.00", duration: "2 hr", title: "Hospital Visit..", initials: "AA", isCompleted: false, hasRepeatIcon: false, color: .gray, iconSystemName: nil, isPending: true, showDocumentIcon: false),
-        TimelineTaskModel(startTime: "17.00", endTime: "17.30", duration: "30 min", title: "Prepare Dinner", initials: "AA", isCompleted: false, hasRepeatIcon: true, color: .orange.opacity(0.7), iconSystemName: nil, isPending: false, showDocumentIcon: true),
-        TimelineTaskModel(startTime: "19.00", endTime: "20.00", duration: "30 min", title: "Give Meds", initials: "AA", isCompleted: false, hasRepeatIcon: false, color: .gray, iconSystemName: nil, isPending: true, showDocumentIcon: true)
-    ]
-    
-    var activeTasks: [TimelineTaskModel] {
-        selectedTab == 0 ? allTasks : myTasks
+
+    private var activeTasks: [TimelineTaskModel] {
+        guard let store else { return [] }
+        return selectedTab == 0 ? store.allTasks : store.myTasks
     }
-    
+
     var body: some View {
         VStack(spacing: 0) {
             HStack {
@@ -37,7 +29,7 @@ struct TimelineView: View {
                         .fontWeight(.bold)
                 }
                 Spacer()
-                
+
                 NavigationLink(destination: InboxView()) {
                     Image(systemName: "tray.fill")
                         .font(.title2)
@@ -55,18 +47,18 @@ struct TimelineView: View {
             }
             .padding(.horizontal)
             .padding(.top, 16)
-            
+
             HStack {
                 let days = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"]
                 let dates = [24, 25, 26, 27, 28, 29, 30]
-                
+
                 ForEach(0..<7, id: \.self) { i in
                     VStack(spacing: 8) {
                         Text(days[i])
                             .font(.caption2)
                             .fontWeight(.semibold)
                             .foregroundStyle(.gray.opacity(0.8))
-                        
+
                         Text("\(dates[i])")
                             .font(.headline)
                             .fontWeight(dates[i] == 26 ? .bold : .semibold)
@@ -83,9 +75,9 @@ struct TimelineView: View {
             }
             .padding(.horizontal, 24)
             .padding(.top, 16)
-            
+
             Divider().padding(.vertical, 16)
-            
+
             HStack(spacing: 0) {
                 Button(action: { selectedTab = 0 }) {
                     Text("All Task")
@@ -101,7 +93,7 @@ struct TimelineView: View {
                             }
                         }
                 }
-                
+
                 Button(action: { selectedTab = 1 }) {
                     Text("My Task")
                         .font(.subheadline)
@@ -122,27 +114,61 @@ struct TimelineView: View {
             .clipShape(Capsule())
             .padding(.horizontal, 24)
             .padding(.bottom, 16)
-            
-            ScrollView {
-                ZStack(alignment: .topLeading) {
-                    VStack(spacing: 0) {
-                        ForEach(activeTasks.indices, id: \.self) { index in
-                            TimelineTaskRow(
-                                task: activeTasks[index],
-                                isLast: index == activeTasks.count - 1
-                            )
-                            .padding(.bottom, index == activeTasks.count - 1 ? 120 : 0)
+
+            Group {
+                if store?.isLoading == true, activeTasks.isEmpty {
+                    ProgressView()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if activeTasks.isEmpty {
+                    ContentUnavailableView(
+                        "No Tasks",
+                        systemImage: "calendar",
+                        description: Text(
+                            selectedTab == 0
+                                ? "Create a task with the + button."
+                                : "No tasks assigned to you yet."
+                        )
+                    )
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    ScrollView {
+                        ZStack(alignment: .topLeading) {
+                            VStack(spacing: 0) {
+                                ForEach(activeTasks) { task in
+                                    TimelineTaskRow(
+                                        task: task,
+                                        isLast: task.id == activeTasks.last?.id
+                                    )
+                                    .padding(.bottom, task.id == activeTasks.last?.id ? 120 : 0)
+                                }
+                            }
+                            .padding(.horizontal)
+
+                            if selectedTab == 0 {
+                                CurrentTimeIndicator()
+                                    .padding(.top, 340)
+                            }
                         }
-                    }
-                    .padding(.horizontal)
-                    
-                    if selectedTab == 0 {
-                        CurrentTimeIndicator()
-                            .padding(.top, 340)
                     }
                 }
             }
         }
+        .task(id: reloadToken) {
+            await reloadTasks()
+        }
+        .refreshable {
+            await store?.load()
+        }
+    }
+
+    private func reloadTasks() async {
+        if store == nil {
+            store = TimelineStore(
+                taskRepository: taskRepository,
+                contactRepository: contactRepository
+            )
+        }
+        await store?.load()
     }
 }
 
@@ -158,7 +184,7 @@ struct CurrentTimeIndicator: View {
                 .background(Color.red)
                 .clipShape(Capsule())
                 .padding(.leading, 8)
-            
+
             Rectangle()
                 .fill(Color.red)
                 .frame(height: 1.5)
@@ -169,6 +195,8 @@ struct CurrentTimeIndicator: View {
 
 #Preview {
     NavigationStack {
-        TimelineView()
+        TimelineView(reloadToken: UUID())
     }
+    .environment(\.taskRepository, AppDependencies.live.taskRepository)
+    .environment(\.contactRepository, AppDependencies.live.contactRepository)
 }

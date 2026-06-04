@@ -1,7 +1,7 @@
 import Contacts
 
 extension CNContact {
-    func toCareContact(relationship defaultRelationship: String = "Other") -> CareContact {
+    func toCareContact(careTeamID: UUID, relationship defaultRelationship: String = "Other") -> CareContact {
         let fullName = CNContactFormatter.string(from: self, style: .fullName)?
             .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
 
@@ -10,6 +10,7 @@ extension CNContact {
             .joined(separator: " ")
 
         return CareContact(
+            careTeamID: careTeamID,
             name: fullName.isEmpty ? fallbackName : fullName,
             relationship: defaultRelationship,
             phone: primaryPhone,

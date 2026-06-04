@@ -3,6 +3,7 @@ import SwiftUI
 
 extension View {
     func careGroupAddMemberSheets(
+        careTeamID: UUID,
         isShowingSystemContactPicker: Binding<Bool>,
         importedDraft: Binding<CareContact?>,
         onSave: @escaping (CareContact) async throws -> Void
@@ -11,7 +12,7 @@ extension View {
             SystemContactPicker(
                 onSelect: { cnContact in
                     isShowingSystemContactPicker.wrappedValue = false
-                    importedDraft.wrappedValue = cnContact.toCareContact()
+                    importedDraft.wrappedValue = cnContact.toCareContact(careTeamID: careTeamID)
                 },
                 onCancel: {
                     isShowingSystemContactPicker.wrappedValue = false
@@ -21,7 +22,7 @@ extension View {
         }
         .sheet(item: importedDraft) { draft in
             NavigationStack {
-                ContactDetailView(mode: .imported(draft), onSave: onSave)
+                ContactDetailView(careTeamID: careTeamID, mode: .imported(draft), onSave: onSave)
                     .toolbar {
                         ToolbarItem(placement: .cancellationAction) {
                             Button("Cancel") {

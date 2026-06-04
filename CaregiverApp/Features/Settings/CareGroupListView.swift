@@ -54,6 +54,7 @@ struct CareGroupListView: View {
             }
         }
         .careGroupAddMemberSheets(
+            careTeamID: SeedData.careTeamID,
             isShowingSystemContactPicker: $isShowingSystemContactPicker,
             importedDraft: $importedDraft
         ) { contact in
@@ -61,7 +62,7 @@ struct CareGroupListView: View {
             try await store.save(contact)
         }
         .navigationDestination(for: ContactEditorMode.self) { mode in
-            ContactDetailView(mode: mode) { contact in
+            ContactDetailView(careTeamID: SeedData.careTeamID, mode: mode) { contact in
                 guard let store else { return }
                 try await store.save(contact)
             }

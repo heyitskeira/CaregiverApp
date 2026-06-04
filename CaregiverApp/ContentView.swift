@@ -36,6 +36,7 @@ enum AppTab: String, CaseIterable {
 struct ContentView: View {
     @State private var selectedTab: AppTab = .timeline
     @State private var showTaskSheet = false
+    @State private var timelineReloadToken = UUID()
 
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -43,7 +44,7 @@ struct ContentView: View {
                 switch selectedTab {
                 case .timeline:
                     NavigationStack {
-                        TimelineView()
+                        TimelineView(reloadToken: timelineReloadToken)
                     }
                 case .details:
                     NavigationStack {
@@ -105,7 +106,9 @@ struct ContentView: View {
             .padding(.bottom, 24)
         }
         .ignoresSafeArea(.keyboard)
-        .sheet(isPresented: $showTaskSheet) {
+        .sheet(isPresented: $showTaskSheet, onDismiss: {
+            timelineReloadToken = UUID()
+        }) {
             TaskSheetView()
         }
     }

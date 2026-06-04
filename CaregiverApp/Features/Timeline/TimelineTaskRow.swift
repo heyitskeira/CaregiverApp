@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct TimelineTaskModel: Identifiable {
-    let id = UUID()
+    let id: UUID
     let startTime: String
     let endTime: String
     let duration: String

@@ -56,6 +56,7 @@ struct CareGroupSection: View {
             }
         }
         .careGroupAddMemberSheets(
+            careTeamID: SeedData.careTeamID,
             isShowingSystemContactPicker: $isShowingSystemContactPicker,
             importedDraft: $importedDraft
         ) { contact in
