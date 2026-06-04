@@ -129,47 +129,124 @@ struct TaskSheetView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Custom header
-            TaskSheetHeader(
-                title: headerTitle,
-                isEditing: isEditing,
-                onClose: {
-                    if isEditing && !isCreateMode {
-                        // Cancel editing, restore original values
-                        if case .view(let task) = mode {
-                            taskName = task.title
-                            taskNote = task.taskNote
-                            taskDate = task.startDate
-                            taskEndDate = task.endDate
-                            repeatOption = task.repeatOption
+            // Top Blue Header Section
+            VStack(spacing: 0) {
+                // Drag indicator
+                Capsule()
+                    .fill(Color.white.opacity(0.4))
+                    .frame(width: 36, height: 4)
+                    .padding(.top, 8)
+                    .padding(.bottom, 12)
+                
+                // Header (X, Details, Checkmark)
+                HStack {
+                    Button(action: {
+                        if isEditing && !isCreateMode {
+                            if case .view(let task) = mode {
+                                taskName = task.title
+                                taskNote = task.taskNote
+                                taskDate = task.startDate
+                                taskEndDate = task.endDate
+                                repeatOption = task.repeatOption
+                            }
+                            isEditing = false
+                        } else {
+                            dismiss()
                         }
-                        isEditing = false
-                    } else {
-                        dismiss()
+                    }) {
+                        Image(systemName: "xmark")
+                            .font(.body.weight(.semibold))
+                            .foregroundStyle(.black)
+                            .frame(width: 36, height: 36)
+                            .background(Color.white.opacity(0.5))
+                            .clipShape(Circle())
                     }
-                },
-                onSave: {
+                    
+                    Spacer()
+                    
+                    Text(headerTitle)
+                        .font(.headline)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.white)
+                    
+                    Spacer()
+                    
+                    Button(action: {
+                        if isEditing {
+                            saveTask()
+                        } else {
+                            isEditing = true
+                        }
+                    }) {
+                        Image(systemName: "checkmark")
+                            .font(.body.weight(.bold))
+                            .foregroundStyle(.black)
+                            .frame(width: 36, height: 36)
+                            .background(Color.white.opacity(0.5))
+                            .clipShape(Circle())
+                    }
+                    .disabled(isEditing && taskName.trimmingCharacters(in: .whitespaces).isEmpty)
+                }
+                .padding(.horizontal)
+                
+                // Task Icon & Name
+                HStack(alignment: .bottom, spacing: 16) {
+                    // Profile picture shape
+                    ZStack(alignment: .bottomLeading) {
+                        if isEditing {
+                            RoundedRectangle(cornerRadius: 16)
+                                .stroke(style: StrokeStyle(lineWidth: 2, dash: [5, 4]))
+                                .foregroundColor(.white.opacity(0.6))
+                                .frame(width: 60, height: 84)
+                                .background(Color.white.opacity(0.2).clipShape(RoundedRectangle(cornerRadius: 16)))
+                        } else {
+                            // filled leaf shape
+                            Color.white.opacity(0.3)
+                                .frame(width: 60, height: 84)
+                                .clipShape(
+                                    .rect(
+                                        topLeadingRadius: 16,
+                                        bottomLeadingRadius: 4,
+                                        bottomTrailingRadius: 16,
+                                        topTrailingRadius: 16
+                                    )
+                                )
+                        }
+                        
+                        // Badge
+                        Image(systemName: "person.badge.plus")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundColor(.black)
+                            .frame(width: 24, height: 24)
+                            .background(Color.white.opacity(0.6))
+                            .clipShape(Circle())
+                            .offset(x: -8, y: 8)
+                    }
+                    
                     if isEditing {
-                        saveTask()
+                        TextField("Task Name", text: $taskName)
+                            .font(.title2.weight(.bold))
+                            .foregroundStyle(.white)
+                            .padding(.bottom, 4)
+                            .overlay(Rectangle().frame(height: 1).foregroundColor(.white), alignment: .bottom)
                     } else {
-                        isEditing = true
+                        Text(taskName)
+                            .font(.title2.weight(.bold))
+                            .foregroundStyle(.white)
+                            .padding(.bottom, 4)
+                            .overlay(Rectangle().frame(height: 1).foregroundColor(.white), alignment: .bottom)
                     }
-                },
-                isSaveDisabled: isEditing && taskName.trimmingCharacters(in: .whitespaces).isEmpty
-            )
-
-            Divider()
-                .overlay(AppTheme.divider)
+                    
+                    Spacer()
+                }
+                .padding(.horizontal)
+                .padding(.top, 24)
+                .padding(.bottom, 24)
+            }
+            .background(AppTheme.accentBlue)
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
-                    // Task icon + name (centered)
-                    taskIconAndName
-                        .frame(maxWidth: .infinity)
-
-                    Divider()
-                        .overlay(AppTheme.divider)
-                        .padding(.horizontal)
 
                     // Date & Time
                     TaskDateTimeSection(
@@ -239,32 +316,6 @@ struct TaskSheetView: View {
         }
     }
 
-    // MARK: - Task Icon & Name
-    private var taskIconAndName: some View {
-        VStack(spacing: 12) {
-            // Person icon in peach circle
-            Image(systemName: "person.fill")
-                .font(.title)
-                .foregroundColor(.white)
-                .frame(width: 60, height: 60)
-                .background(AppTheme.accentPeach)
-                .clipShape(Circle())
-
-            if isEditing {
-                TextField("Task Name", text: $taskName)
-                    .font(.title2)
-                    .fontWeight(.bold)
-                    .multilineTextAlignment(.center)
-                    .foregroundStyle(AppTheme.primaryText)
-                    .padding(.horizontal, 40)
-            } else {
-                Text(taskName)
-                    .font(.title2)
-                    .fontWeight(.bold)
-                    .foregroundStyle(AppTheme.primaryText)
-            }
-        }
-    }
 
     // MARK: - Save
     private func saveTask() {

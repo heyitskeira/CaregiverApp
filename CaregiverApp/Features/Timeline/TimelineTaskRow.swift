@@ -41,11 +41,11 @@ struct TimelineTaskRow: View {
             // Task info + action buttons
             VStack(alignment: .leading, spacing: 4) {
                 taskInfoSection
-                if task.showDocumentIcon {
-                    Image(systemName: "doc.text.fill")
-                        .font(.caption)
-                        .foregroundColor(AppTheme.secondaryText)
-                }
+//                if task.showDocumentIcon {
+//                    Image(systemName: "doc.text.fill")
+//                        .font(.caption)
+//                        .foregroundColor(AppTheme.secondaryText)
+//                }
             }
             .padding(.top, 10)
             .opacity(rowOpacity)
@@ -138,13 +138,13 @@ struct TimelineTaskRow: View {
                 Button(action: { onAccept?() }) {
                     Image(systemName: "checkmark.circle.fill")
                         .font(.title2)
-                        .foregroundColor(AppTheme.accentGreen)
+                        .foregroundColor(AppTheme.accentBlue)
                 }
 
                 Button(action: { onDecline?() }) {
                     Image(systemName: "xmark.circle.fill")
                         .font(.title2)
-                        .foregroundColor(.red)
+                        .foregroundColor(.gray)
                 }
             }
             .padding(.top, 10)

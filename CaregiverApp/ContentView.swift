@@ -8,6 +8,7 @@ import SwiftUI
 enum AppTab: String, CaseIterable {
     case allTask
     case myTask
+    case logs
     case settings
     case addTask
 
@@ -17,6 +18,8 @@ enum AppTab: String, CaseIterable {
             return "All Task"
         case .myTask:
             return "My Task"
+        case .logs:
+            return "Logs"
         case .settings:
             return "Settings"
         case .addTask:
@@ -30,6 +33,8 @@ enum AppTab: String, CaseIterable {
             return "list.bullet.rectangle.portrait"
         case .myTask:
             return "person.crop.circle.badge.checkmark"
+        case .logs:
+            return "doc.text"
         case .settings:
             return "gearshape"
         case .addTask:
@@ -103,7 +108,6 @@ struct ContentView: View {
                 initials: "AA",
                 hasRepeatIcon: true,
                 state: .assigned,
-                showDocumentIcon: true
             ),
             TimelineTaskModel(
                 startDate: TimelineTaskModel.makeDate(hour: 19, minute: 0, from: today),
@@ -112,7 +116,6 @@ struct ContentView: View {
                 initials: "AA",
                 hasRepeatIcon: true,
                 state: .assigned,
-                showDocumentIcon: true
             )
         ]
     }()
@@ -154,6 +157,14 @@ struct ContentView: View {
                         }
                     )
                 }
+            }
+
+            Tab(
+                AppTab.logs.title,
+                systemImage: AppTab.logs.icon,
+                value: .logs
+            ) {
+                LogsView()
             }
 
             Tab(

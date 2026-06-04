@@ -25,9 +25,9 @@ struct TaskAssignSection: View {
             if assignedHelpers.isEmpty {
                 // Empty state
                 HStack(spacing: 12) {
-                    Image(systemName: "person.crop.circle")
-                        .font(.title2)
-                        .foregroundStyle(AppTheme.secondaryText)
+                    Image(systemName: "person.badge.plus")
+                        .font(.body)
+                        .foregroundStyle(AppTheme.accentBlue)
 
                     Text("This task has not been assigned yet..")
                         .font(.subheadline)
@@ -36,8 +36,11 @@ struct TaskAssignSection: View {
 
                     Spacer()
                 }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+                .background(AppTheme.cardBackground)
+                .clipShape(Capsule())
                 .padding(.horizontal)
-                .padding(.vertical, 4)
                 .contentShape(Rectangle())
                 .onTapGesture {
                     if isEditing {

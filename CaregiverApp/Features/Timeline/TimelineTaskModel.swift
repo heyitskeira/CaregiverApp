@@ -24,7 +24,7 @@ struct TimelineTaskModel: Identifiable {
     var iconSystemName: String?
     var state: TaskState = .assigned
     var previousState: TaskState? = nil
-    var showDocumentIcon: Bool = false
+//    var showDocumentIcon: Bool = false
     var taskNote: String = ""
     var repeatOption: RepeatOption = .none
 
@@ -37,7 +37,7 @@ struct TimelineTaskModel: Identifiable {
         hasRepeatIcon: Bool = false,
         iconSystemName: String? = nil,
         state: TaskState = .assigned,
-        showDocumentIcon: Bool = false,
+//        showDocumentIcon: Bool = false,
         taskNote: String = "",
         repeatOption: RepeatOption = .none
     ) {
@@ -49,7 +49,7 @@ struct TimelineTaskModel: Identifiable {
         self.hasRepeatIcon = hasRepeatIcon
         self.iconSystemName = iconSystemName
         self.state = state
-        self.showDocumentIcon = showDocumentIcon
+//        self.showDocumentIcon = showDocumentIcon
         self.taskNote = taskNote
         self.repeatOption = repeatOption
     }

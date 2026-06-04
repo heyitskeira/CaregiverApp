@@ -20,10 +20,18 @@ struct InboxRow: View {
             HStack(spacing: 12) {
                 // Profile image with wave hand badge
                 ZStack(alignment: .bottomTrailing) {
-                    Image(systemName: "person.circle.fill")
+                    Image("profile1")
                         .resizable()
-                        .frame(width: 50, height: 50)
-                        .foregroundColor(AppTheme.secondaryText)
+                        .scaledToFill()
+                        .frame(width: 50, height: 64)
+                        .clipShape(
+                            .rect(
+                                topLeadingRadius: 16,
+                                bottomLeadingRadius: 4,
+                                bottomTrailingRadius: 16,
+                                topTrailingRadius: 16
+                            )
+                        )
 
                     Image(systemName: "hand.raised.fill")
                         .font(.caption2)
@@ -65,13 +73,13 @@ struct InboxRow: View {
                     Button(action: { onAccept?() }) {
                         Image(systemName: "checkmark.circle.fill")
                             .font(.title2)
-                            .foregroundColor(AppTheme.accentGreen)
+                            .foregroundColor(AppTheme.accentBlue)
                     }
 
                     Button(action: { onDecline?() }) {
                         Image(systemName: "xmark.circle.fill")
                             .font(.title2)
-                            .foregroundColor(.red)
+                            .foregroundColor(.gray)
                     }
                 }
 

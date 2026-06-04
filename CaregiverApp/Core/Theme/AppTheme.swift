@@ -20,6 +20,10 @@ enum AppTheme {
     static let accentNavy = Color(light: Color(red: 0.09, green: 0.15, blue: 0.30),
                                    dark: Color(red: 0.53, green: 0.68, blue: 0.90))
 
+    /// Bright blue used for the header in task sheet and checkmark
+    static let accentBlue = Color(light: Color(red: 0.15, green: 0.35, blue: 0.85),
+                                  dark: Color(red: 0.35, green: 0.55, blue: 0.95))
+
     /// Orange accent for inbox icons, badges
     static let accentOrange = Color(light: Color(red: 0.90, green: 0.55, blue: 0.25),
                                      dark: Color(red: 0.95, green: 0.65, blue: 0.35))
