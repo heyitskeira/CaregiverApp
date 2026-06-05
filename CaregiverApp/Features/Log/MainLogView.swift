@@ -11,15 +11,15 @@ struct MainLogView: View {
     
     @State private var showingAddLog = false
     
+    @State private var logs: [Log] = []
+        
     var body: some View {
         
         NavigationStack{
-            
-            Button{
+            Button {
                 showingAddLog = true
             } label:{
                 HStack{
-                    
                     Image(systemName: "person.crop.circle.fill")
                         .font(.largeTitle)
                     
@@ -40,13 +40,23 @@ struct MainLogView: View {
                 }
             }
             .buttonStyle(.glass)
+            .padding(.vertical)
             
-            ScrollView{
-                
+            ScrollView {
+                LazyVStack {
+                    ForEach(logs) { log in
+                        LogPost(log: log)
+                        Divider()
+                            .padding(.vertical, 8)
+                    }
+                }
             }
+            .padding(.horizontal, 12)
         }
-        .sheet(isPresented: $showingAddLog){
-            AddLogSheetView()
+        .sheet(isPresented: $showingAddLog) {
+            AddLogSheetView { newLog in
+                logs.insert(newLog, at: 0)
+            }
         }
         .padding(.horizontal)
     }

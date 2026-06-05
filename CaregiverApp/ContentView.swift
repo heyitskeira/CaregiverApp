@@ -10,6 +10,7 @@ enum AppTab: String, CaseIterable {
     case myTask
     case settings
     case addTask
+    case logPage
 
     var title: String {
         switch self {
@@ -17,6 +18,7 @@ enum AppTab: String, CaseIterable {
         case .myTask: "My Task"
         case .settings: "Settings"
         case .addTask: "Add Task"
+        case .logPage: "Log"
         }
     }
 
@@ -26,6 +28,7 @@ enum AppTab: String, CaseIterable {
         case .myTask: "person.crop.circle.badge.checkmark"
         case .settings: "gearshape"
         case .addTask: "plus"
+        case .logPage: "scroll"
         }
     }
 }
@@ -53,6 +56,14 @@ struct ContentView: View {
                         selectedDate: $selectedDate,
                         onTaskTapped: openTaskDetail,
                         onTaskStatusChanged: persistTaskStatus
+                    )
+                }
+            }
+            
+            Tab(AppTab.logPage.title, systemImage: AppTab.logPage.icon, value: AppTab.logPage) {
+                NavigationStack {
+                    MainLogView(
+                        
                     )
                 }
             }
