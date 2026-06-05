@@ -85,8 +85,11 @@ struct LogPost: View {
 }
 
 #Preview {
+    
+    let demoTeamID = UUID()
 
     let sampleContact = CareContact(
+        careTeamID: demoTeamID,
         name: "Sarah Antoso",
         relationship: "Primary Caregiver"
     )

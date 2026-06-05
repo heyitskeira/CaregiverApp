@@ -1,4 +1,3 @@
-import Contacts
 import SwiftUI
 
 struct CareGroupListView: View {
@@ -7,6 +6,7 @@ struct CareGroupListView: View {
     @State private var searchText = ""
     @State private var isShowingSystemContactPicker = false
     @State private var importedDraft: CareContact?
+    @State private var didStartLoad = false
 
     private var filteredContacts: [CareContact] {
         guard let store else { return [] }
@@ -18,15 +18,30 @@ struct CareGroupListView: View {
     }
 
     var body: some View {
-        Group {
-            if let store {
-                listContent(store: store)
-            } else {
-                ProgressView()
+        List {
+            Section {
+                if store == nil {
+                    HStack {
+                        Spacer()
+                        ProgressView()
+                        Spacer()
+                    }
+                    .listRowBackground(Color.clear)
+                } else if filteredContacts.isEmpty {
+                    emptyRow
+                } else {
+                    ForEach(filteredContacts) { contact in
+                        NavigationLink(value: ContactEditorMode.edit(contact)) {
+                            ContactRow(contact: contact)
+                        }
+                    }
+                    .onDelete(perform: deleteContacts)
+                }
             }
         }
+        .listStyle(.insetGrouped)
         .navigationTitle("Care Group")
-        .navigationBarTitleDisplayMode(.large)
+        .navigationBarTitleDisplayMode(.inline)
         .searchable(text: $searchText, prompt: "Search contacts")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
@@ -38,44 +53,22 @@ struct CareGroupListView: View {
                 .accessibilityLabel("Add care group member from Contacts")
             }
         }
-        .sheet(isPresented: $isShowingSystemContactPicker) {
-            SystemContactPicker(
-                onSelect: { cnContact in
-                    isShowingSystemContactPicker = false
-                    importedDraft = cnContact.toCareContact()
-                },
-                onCancel: {
-                    isShowingSystemContactPicker = false
-                }
-            )
-            .ignoresSafeArea()
-        }
-        .sheet(item: $importedDraft) { draft in
-            NavigationStack {
-                ContactDetailView(mode: .imported(draft)) { contact in
-                    guard let store else { return }
-                    try await store.save(contact)
-                }
-                .toolbar {
-                    ToolbarItem(placement: .cancellationAction) {
-                        Button("Cancel") {
-                            importedDraft = nil
-                        }
-                    }
-                }
-            }
+        .careGroupAddMemberSheets(
+            careTeamID: SeedData.careTeamID,
+            isShowingSystemContactPicker: $isShowingSystemContactPicker,
+            importedDraft: $importedDraft
+        ) { contact in
+            guard let store else { return }
+            try await store.save(contact)
         }
         .navigationDestination(for: ContactEditorMode.self) { mode in
-            ContactDetailView(mode: mode) { contact in
+            ContactDetailView(careTeamID: SeedData.careTeamID, mode: mode) { contact in
                 guard let store else { return }
                 try await store.save(contact)
             }
         }
-        .task {
-            if store == nil {
-                store = CareGroupStore(contactRepository: contactRepository)
-            }
-            await store?.load()
+        .onAppear {
+            startLoadingIfNeeded()
         }
         .refreshable {
             await store?.load()
@@ -83,52 +76,38 @@ struct CareGroupListView: View {
     }
 
     @ViewBuilder
-    private func listContent(store: CareGroupStore) -> some View {
-        if store.isLoading && store.contacts.isEmpty {
-            ProgressView()
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-        } else if filteredContacts.isEmpty {
-            ContentUnavailableView(
-                searchText.isEmpty ? "No Care Group Members" : "No Results",
-                systemImage: "person.2",
-                description: Text(
-                    searchText.isEmpty
-                        ? "Add family or friends from your Contacts app."
-                        : "Try a different name or relationship."
-                )
+    private var emptyRow: some View {
+        ContentUnavailableView(
+            searchText.isEmpty ? "No Care Group Members" : "No Results",
+            systemImage: "person.2",
+            description: Text(
+                searchText.isEmpty
+                    ? "Add family or friends from your Contacts app."
+                    : "Try a different name or relationship."
             )
-            .overlay(alignment: .bottom) {
-                if searchText.isEmpty {
-                    Button("Add from Contacts") {
-                        isShowingSystemContactPicker = true
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .padding(.bottom, 24)
-                }
-            }
-        } else {
-            List {
-                ForEach(filteredContacts) { contact in
-                    NavigationLink(value: ContactEditorMode.edit(contact)) {
-                        ContactRow(contact: contact, showsChevron: true)
-                    }
-                }
-                .onDelete { indexSet in
-                    Task {
-                        for index in indexSet {
-                            await store.delete(id: filteredContacts[index].id)
-                        }
-                    }
-                }
-            }
-            .listStyle(.insetGrouped)
-        }
+        )
+        .frame(maxWidth: .infinity)
+        .listRowBackground(Color.clear)
+        .listRowSeparator(.hidden)
+    }
 
-        if let errorMessage = store.errorMessage {
-            Text(errorMessage)
-                .font(.footnote)
-                .foregroundStyle(.red)
-                .padding()
+    private func startLoadingIfNeeded() {
+        guard !didStartLoad else { return }
+        didStartLoad = true
+        let newStore = CareGroupStore(contactRepository: contactRepository)
+        store = newStore
+        Task {
+            await newStore.load()
+        }
+    }
+
+    private func deleteContacts(at offsets: IndexSet) {
+        guard let store else { return }
+        let contacts = filteredContacts
+        Task {
+            for index in offsets {
+                await store.delete(id: contacts[index].id)
+            }
         }
     }
 }

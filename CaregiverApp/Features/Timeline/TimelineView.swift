@@ -10,7 +10,9 @@ struct TimelineView: View {
     var filter: TimelineFilter = .all
     @Binding var tasks: [TimelineTaskModel]
     @Binding var selectedDate: Date
+    var myTasksAssigneeID: UUID = SeedData.myTasksViewerContactID
     var onTaskTapped: ((TimelineTaskModel) -> Void)? = nil
+    var onTaskStatusChanged: ((TimelineTaskModel) -> Void)? = nil
 
     @State private var currentTime = Date()
     private let timer = Timer.publish(every: 30, on: .main, in: .common).autoconnect()
@@ -34,7 +36,7 @@ struct TimelineView: View {
         case .all:
             filtered = dayTasks
         case .mine:
-            filtered = dayTasks.filter { $0.initials == "AA" }
+            filtered = dayTasks.filter { $0.assigneeIDs.contains(myTasksAssigneeID) }
         }
 
         return filtered.sorted { $0.startDate < $1.startDate }
@@ -125,7 +127,6 @@ struct TimelineView: View {
                         Circle()
                             .fill(.red)
                             .frame(width: 12, height: 12)
-                            .offset(x: 0, y: 0)
                     }
             }
         }
@@ -137,18 +138,18 @@ struct TimelineView: View {
         HStack {
             let week = weekDates(around: selectedDate)
             let dayFormatter: DateFormatter = {
-                let f = DateFormatter()
-                f.dateFormat = "EEE"
-                return f
+                let formatter = DateFormatter()
+                formatter.dateFormat = "EEE"
+                return formatter
             }()
 
             ForEach(week, id: \.self) { day in
                 let isSelected = calendar.isDate(day, inSameDayAs: selectedDate)
                 let isToday = calendar.isDateInToday(day)
 
-                Button(action: {
+                Button {
                     selectedDate = day
-                }) {
+                } label: {
                     VStack(spacing: 8) {
                         Text(dayFormatter.string(from: day).uppercased())
                             .font(.caption2)
@@ -207,14 +208,15 @@ struct TimelineView: View {
     }
 
     private func toggleTask(_ task: TimelineTaskModel) {
-        guard let idx = tasks.firstIndex(where: { $0.id == task.id }) else { return }
-        if tasks[idx].state == .completed {
-            tasks[idx].state = tasks[idx].previousState ?? .assigned
-            tasks[idx].previousState = nil
+        guard let index = tasks.firstIndex(where: { $0.id == task.id }) else { return }
+        if tasks[index].state == .completed {
+            tasks[index].state = tasks[index].previousState ?? .assigned
+            tasks[index].previousState = nil
         } else {
-            tasks[idx].previousState = tasks[idx].state
-            tasks[idx].state = .completed
+            tasks[index].previousState = tasks[index].state
+            tasks[index].state = .completed
         }
+        onTaskStatusChanged?(tasks[index])
     }
 }
 
@@ -222,9 +224,9 @@ struct CurrentTimeIndicator: View {
     var currentTime: Date
 
     private var timeString: String {
-        let f = DateFormatter()
-        f.dateFormat = "HH:mm"
-        return f.string(from: currentTime)
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm"
+        return formatter.string(from: currentTime)
     }
 
     var body: some View {
@@ -251,27 +253,13 @@ struct CurrentTimeIndicator: View {
     @Previewable @State var selectedDate = Date()
     @Previewable @State var tasks: [TimelineTaskModel] = [
         TimelineTaskModel(
-            startDate: TimelineTaskModel.makeDate(hour: 5, minute: 0),
-            endDate: TimelineTaskModel.makeDate(hour: 5, minute: 30),
-            title: "Prepare Bfast",
-            initials: "AA",
+            startDate: TimelineTaskModel.makeDate(hour: 6, minute: 0),
+            endDate: TimelineTaskModel.makeDate(hour: 6, minute: 15),
+            title: "Give Meds",
+            initials: "L",
             hasRepeatIcon: true,
-            state: .completed
-        ),
-        TimelineTaskModel(
-            startDate: TimelineTaskModel.makeDate(hour: 9, minute: 0),
-            endDate: TimelineTaskModel.makeDate(hour: 10, minute: 0),
-            title: "Give Bath",
-            initials: "SA",
-            hasRepeatIcon: true,
-            state: .ongoing
-        ),
-        TimelineTaskModel(
-            startDate: TimelineTaskModel.makeDate(hour: 13, minute: 0),
-            endDate: TimelineTaskModel.makeDate(hour: 15, minute: 0),
-            title: "Hospital Visit",
-            initials: "AA",
-            state: .pending
+            state: .assigned,
+            assigneeIDs: [SeedData.lilyID]
         )
     ]
     NavigationStack {

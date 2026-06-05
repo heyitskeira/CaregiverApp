@@ -9,6 +9,7 @@ enum ContactEditorMode: Hashable {
 struct ContactDetailView: View {
     @Environment(\.dismiss) private var dismiss
 
+    let careTeamID: UUID
     let mode: ContactEditorMode
     let onSave: (CareContact) async throws -> Void
 
@@ -112,6 +113,7 @@ struct ContactDetailView: View {
 
         let contact = CareContact(
             id: existingID ?? UUID(),
+            careTeamID: careTeamID,
             name: trimmedName,
             relationship: relationship,
             phone: phone.trimmingCharacters(in: .whitespacesAndNewlines),

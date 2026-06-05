@@ -79,8 +79,11 @@ struct PatientEditView: View {
         patient.allergies = allergies
         patient.favoriteFood = favoriteFood
         patient.healthNotes = healthNotes
-        
-        dismiss()
+
+        Task {
+            try? await patientRepository.savePatient(patient)
+            dismiss()
+        }
     }
     
 }

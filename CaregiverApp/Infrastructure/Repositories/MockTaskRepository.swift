@@ -14,12 +14,16 @@ final class MockTaskRepository: TaskRepository {
 
     func fetchTasks(assigneeID: UUID) async throws -> [CareTask] {
         tasks
-            .filter { $0.assigneeID == assigneeID }
+            .filter { $0.isAssigned(to: assigneeID) }
             .sorted { $0.scheduledAt < $1.scheduledAt }
     }
 
     func saveTask(_ task: CareTask) async throws {
-        tasks.append(task)
+        if let index = tasks.firstIndex(where: { $0.id == task.id }) {
+            tasks[index] = task
+        } else {
+            tasks.append(task)
+        }
     }
 
     func updateTask(_ task: CareTask) async throws {

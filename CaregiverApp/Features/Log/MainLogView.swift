@@ -16,12 +16,10 @@ struct MainLogView: View {
     var body: some View {
         
         NavigationStack{
-            
-            Button{
+            Button {
                 showingAddLog = true
             } label:{
                 HStack{
-                    
                     Image(systemName: "person.crop.circle.fill")
                         .font(.largeTitle)
                     

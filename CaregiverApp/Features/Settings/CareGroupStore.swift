@@ -15,9 +15,16 @@ final class CareGroupStore {
     }
 
     func load() async {
-        isLoading = true
+        let showLoadingIndicator = contacts.isEmpty
+        if showLoadingIndicator {
+            isLoading = true
+        }
         errorMessage = nil
-        defer { isLoading = false }
+        defer {
+            if showLoadingIndicator {
+                isLoading = false
+            }
+        }
 
         do {
             contacts = try await contactRepository.fetchContacts()
