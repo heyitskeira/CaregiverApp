@@ -21,9 +21,10 @@ struct AddLogSheetView: View {
     let onUpload: (Log) -> Void
     
     private let currentUser = CareContact(
-            name: "Sarah Antoso",
-            relationship: "Primary Caregiver"
-        )
+        careTeamID: UUID(),
+        name: "Sarah Antoso",
+        relationship: "Primary Caregiver"
+    )
     
     var body: some View {
         NavigationStack{
