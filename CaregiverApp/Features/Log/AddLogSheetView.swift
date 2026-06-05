@@ -20,6 +20,11 @@ struct AddLogSheetView: View {
     
     let onUpload: (Log) -> Void
     
+    private let currentUser = CareContact(
+            name: "Sarah Antoso",
+            relationship: "Primary Caregiver"
+        )
+    
     var body: some View {
         NavigationStack{
             ScrollView{
@@ -36,7 +41,7 @@ struct AddLogSheetView: View {
                         VStack(alignment: .leading, spacing: 8) {
                             
                             VStack(alignment: .leading){
-                                Text("Sarah Antoso")
+                                Text(currentUser.name)
                                     .fontWeight(.semibold)
                                 
                                 TextField(
