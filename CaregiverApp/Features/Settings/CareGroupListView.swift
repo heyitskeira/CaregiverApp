@@ -8,6 +8,9 @@ struct CareGroupListView: View {
     @State private var importedDraft: CareContact?
     @State private var didStartLoad = false
 
+    @State private var selectedContact: CareContact?
+    @State private var showRemoveSheet = false
+
     private var filteredContacts: [CareContact] {
         guard let store else { return [] }
         guard !searchText.isEmpty else { return store.contacts }
@@ -20,6 +23,22 @@ struct CareGroupListView: View {
     var body: some View {
         List {
             Section {
+                VStack(alignment: .center, spacing: 8) {
+                    Circle()
+                        .fill(Color(.systemGray5))
+                        .frame(width: 94, height: 94)
+                        .overlay(
+                            Image(systemName: "person.fill")
+                                .foregroundColor(.gray)
+                                .font(.system(size: 50))
+                        )
+
+                    Text("Grandma's Care Group").font(.title3)
+                }.frame(maxWidth: .infinity)
+            }
+            .listRowBackground(Color.clear)
+
+            Section {
                 if store == nil {
                     HStack {
                         Spacer()
@@ -31,16 +50,21 @@ struct CareGroupListView: View {
                     emptyRow
                 } else {
                     ForEach(filteredContacts) { contact in
-                        NavigationLink(value: ContactEditorMode.edit(contact)) {
+                        //                        NavigationLink(value: ContactEditorMode.edit(contact)) {
+                        //                            ContactRow(contact: contact)
+                        //                        }
+                        Button {
+                            selectedContact = contact
+                        } label: {
                             ContactRow(contact: contact)
                         }
+                        .buttonStyle(.plain)
                     }
                     .onDelete(perform: deleteContacts)
                 }
             }
         }
         .listStyle(.insetGrouped)
-        .navigationTitle("Care Group")
         .navigationBarTitleDisplayMode(.inline)
         .searchable(text: $searchText, prompt: "Search contacts")
         .toolbar {
@@ -62,7 +86,8 @@ struct CareGroupListView: View {
             try await store.save(contact)
         }
         .navigationDestination(for: ContactEditorMode.self) { mode in
-            ContactDetailView(careTeamID: SeedData.careTeamID, mode: mode) { contact in
+            ContactDetailView(careTeamID: SeedData.careTeamID, mode: mode) {
+                contact in
                 guard let store else { return }
                 try await store.save(contact)
             }
@@ -72,6 +97,23 @@ struct CareGroupListView: View {
         }
         .refreshable {
             await store?.load()
+        }
+        .sheet(item: $selectedContact) { contact in
+            NavigationStack {
+                RemoveMemberSheet(
+                    contact: contact,
+                    onRemove: {
+                        guard let store else { return }
+
+                        Task {
+                            await store.delete(id: contact.id)
+                            selectedContact = nil
+                        }
+                    }
+                )
+            }
+            .presentationDetents([.height(320)])
+            .presentationDragIndicator(.visible)
         }
     }
 
@@ -110,4 +152,8 @@ struct CareGroupListView: View {
             }
         }
     }
+}
+
+#Preview {
+    CareGroupListView()
 }
