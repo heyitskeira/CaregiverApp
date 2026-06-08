@@ -12,7 +12,8 @@ struct WelcomeScreenView: View {
                         LinearGradient(
                             colors: [
                                 Color.accentColor,
-                                Color(red: 234 / 255, green: 241 / 255, blue: 250 / 255)                            ],
+                                Color(.systemBackground)
+                            ],
                             startPoint: .top,
                             endPoint: UnitPoint(x:0.5, y :0.8)
                         )
@@ -26,7 +27,7 @@ struct WelcomeScreenView: View {
                         LinearGradient(
                             colors: [
                                 Color.accentColor,
-                                Color(red: 234 / 255, green: 241 / 255, blue: 250 / 255)
+                                Color(.systemBackground)
                             ],
                             startPoint: .top,
                             endPoint: UnitPoint(x:0.5, y :0.8)
@@ -41,7 +42,7 @@ struct WelcomeScreenView: View {
                         LinearGradient(
                             colors: [
                                 Color.accentColor,
-                                Color(red: 234 / 255, green: 241 / 255, blue: 250 / 255)
+                                Color(.systemBackground)
                             ],
                             startPoint: .top,
                             endPoint: UnitPoint(x:0.5, y :0.8)
@@ -56,7 +57,7 @@ struct WelcomeScreenView: View {
                         LinearGradient(
                             colors: [
                                 Color.accentColor,
-                                Color(red: 234 / 255, green: 241 / 255, blue: 250 / 255)
+                                Color(.systemBackground)
                             ],
                             startPoint: .top,
                             endPoint: UnitPoint(x:0.5, y :0.7)
@@ -126,7 +127,7 @@ struct WelcomeScreenView: View {
                             .foregroundColor(.accentColor)
                             .overlay(
                                 RoundedRectangle(cornerRadius: 24)
-                                    .stroke(Color.accentColor, lineWidth: 2)
+                                    .stroke(Color.accentColor, lineWidth: 1)
                             )
                     }
                 }
