@@ -20,7 +20,10 @@ struct ProfileRootView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding()
 
-                    profileHeader
+                    ProfileHeader(
+                        title: "Sarah Antoso",
+                        subTitle: "Primary Caregiver"
+                    )
 
                     //                    CareGroupSection()
                     List {
@@ -42,7 +45,7 @@ struct ProfileRootView: View {
                                 )
                             }
                         }
-                        
+
                         Section("Prefrences") {
                             Picker(selection: $theme) {
                                 Text("Light").tag(AppTheme.light.rawValue)
@@ -56,55 +59,56 @@ struct ProfileRootView: View {
 
                         Section("Account Settings") {
                             NavigationLink {
-//                                CareGroupListView()
+                                //                                CareGroupListView()
                             } label: {
                                 Label("Profile", systemImage: "person")
                             }.disabled(true)
 
                             NavigationLink {
-//                                PatientdetailView(
-//                                    patientdetail: SeedData.patient
-//                                )
+                                //                                PatientdetailView(
+                                //                                    patientdetail: SeedData.patient
+                                //                                )
                             } label: {
                                 Label(
                                     "Sign Out",
-                                    systemImage: "rectangle.portrait.and.arrow.right"
+                                    systemImage:
+                                        "rectangle.portrait.and.arrow.right"
                                 )
                                 .foregroundStyle(Color.red)
                             }.disabled(true)
                         }
 
-//                        Section(header: Text("Preferences")) {
-//                            NavigationLink {
-//                                NotifsettingView()
-//                            } label: {
-//                                PreferenceList(
-//                                    menuImage: "bell",
-//                                    menuName: "Notification Presferences"
-//                                )
-//                            }
-//
-//                            HStack {
-//                                PreferenceList(
-//                                    menuImage: "globe",
-//                                    menuName: "Language"
-//                                )
-//                                Picker("", selection: $selectedLanguage) {
-//                                    ForEach(Language.allCases) { language in
-//                                        Text(language.rawValue).tag(language)
-//                                    }
-//                                }
-//                            }
-//
-//                            NavigationLink {
-//                                PnSsetting()
-//                            } label: {
-//                                PreferenceList(
-//                                    menuImage: "lock",
-//                                    menuName: "Privacy & Security"
-//                                )
-//                            }
-//                        }
+                        //                        Section(header: Text("Preferences")) {
+                        //                            NavigationLink {
+                        //                                NotifsettingView()
+                        //                            } label: {
+                        //                                PreferenceList(
+                        //                                    menuImage: "bell",
+                        //                                    menuName: "Notification Presferences"
+                        //                                )
+                        //                            }
+                        //
+                        //                            HStack {
+                        //                                PreferenceList(
+                        //                                    menuImage: "globe",
+                        //                                    menuName: "Language"
+                        //                                )
+                        //                                Picker("", selection: $selectedLanguage) {
+                        //                                    ForEach(Language.allCases) { language in
+                        //                                        Text(language.rawValue).tag(language)
+                        //                                    }
+                        //                                }
+                        //                            }
+                        //
+                        //                            NavigationLink {
+                        //                                PnSsetting()
+                        //                            } label: {
+                        //                                PreferenceList(
+                        //                                    menuImage: "lock",
+                        //                                    menuName: "Privacy & Security"
+                        //                                )
+                        //                            }
+                        //                        }
                     }
                     Spacer()
 
@@ -112,36 +116,6 @@ struct ProfileRootView: View {
                 .background(Color.clear)
             }
         }
-    }
-
-    private var profileHeader: some View {
-        HStack(alignment: .center, spacing: 16) {
-            Circle()
-                .fill(Color(.systemGray5))
-                .frame(width: 50, height: 50)
-                .overlay(
-                    Image(systemName: "person.fill")
-                        .foregroundColor(.gray)
-                        .font(.system(size: 24))
-                )
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Sarah Antoso")
-                    .font(.title3.weight(.bold))
-
-                Text("Primary Caregiver")
-                    .font(.footnote)
-                    .foregroundStyle(Color.accent)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
-        .frame(maxWidth: .infinity)
-        .background(Color(.secondarySystemGroupedBackground))
-        .cornerRadius(30)
-        .padding(.horizontal, 16)
-
     }
 }
 
