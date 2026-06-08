@@ -21,11 +21,10 @@ struct SignInview: View {
 
     var body: some View {
         VStack {
-            // Logo placeholder
-            Circle()
-                .fill(Color.accentColor)
+            Image("Logo")
+                .resizable()
+                .scaledToFit()
                 .frame(width: 100, height: 100)
-                .overlay(Text("Logo").foregroundColor(.white))
 
             VStack(spacing: 4) {
                 Text("Welcome back")
