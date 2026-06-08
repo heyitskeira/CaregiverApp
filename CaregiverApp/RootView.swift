@@ -76,7 +76,7 @@ struct RootView: View {
 
 #Preview {
     let router = AppRouter()
-    router.screen = .onboarding
+    router.screen = .home
 
     return RootView()
         .environment(router)
