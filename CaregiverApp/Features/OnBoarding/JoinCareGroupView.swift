@@ -42,6 +42,9 @@ struct JoinCareGroupView: View {
                         .focused($focusedIndex, equals: i)
                     }
                 }
+                Button("Clear Code", action: {
+                    code = Array(repeating: "", count: 6)
+                }).foregroundStyle(Color.secondary)
                 Button(action: {
                     if let paste = UIPasteboard.general.string, paste.count == 6 {
                         for (idx, char) in paste.prefix(6).enumerated() {
@@ -75,9 +78,17 @@ struct JoinCareGroupView: View {
                     .foregroundColor(.white)
                     .clipShape(Capsule())
             }
+            .disabled(code.joined().count != 6)
             .padding(.bottom, 60)
             Spacer()
         }
         .padding()
     }
+}
+
+#Preview {
+    let router = AppRouter()
+
+    return JoinCareGroupView()
+        .environment(router)
 }

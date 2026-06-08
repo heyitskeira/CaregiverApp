@@ -14,6 +14,11 @@ struct SignInview: View {
     @State private var password: String = ""
     @State private var showPassword: Bool = false
 
+    private var isFormComplete: Bool {
+        !phone.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        !password.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
     var body: some View {
         VStack {
             // Logo placeholder
@@ -100,6 +105,8 @@ struct SignInview: View {
                     .foregroundColor(.white)
                     .clipShape(Capsule())
             }
+            .disabled(!isFormComplete)
+            .opacity(isFormComplete ? 1 : 0.5)
 
             HStack(alignment: .center, spacing: 8) {
                 Rectangle()
@@ -127,6 +134,10 @@ struct SignInview: View {
                 .background(Color.black)
                 .foregroundColor(.white)
                 .clipShape(Capsule())
+                .overlay(
+                    RoundedRectangle(cornerRadius: 24)
+                        .stroke(Color.primary, lineWidth: 1)
+                )
             }
 
             HStack {
