@@ -6,38 +6,36 @@
 import SwiftUI
 
 enum AppTab: String, CaseIterable {
-    case allTask
-    case myTask
-    case settings
-    case addTask
+    case timeline
     case logPage
+    case profile
+    case addTask
 
     var title: String {
         switch self {
-        case .allTask: "All Task"
-        case .myTask: "My Task"
-        case .settings: "Settings"
+        case .timeline: "Timeline"
+        case .logPage: "Logs"
+        case .profile: "Profile"
         case .addTask: "Add Task"
-        case .logPage: "Log"
         }
     }
 
     var icon: String {
         switch self {
-        case .allTask: "list.bullet.rectangle.portrait"
-        case .myTask: "person.crop.circle.badge.checkmark"
-        case .settings: "gearshape"
+        case .timeline: "list.bullet.rectangle.portrait"
+        case .logPage: "doc.text"
+        case .profile: "person.crop.circle"
         case .addTask: "plus"
-        case .logPage: "scroll"
         }
     }
 }
 
-struct ContentView: View {
+struct ContentView: View {  
     @Environment(\.taskRepository) private var taskRepository
     @Environment(\.contactRepository) private var contactRepository
+    @Environment(\.authService) private var authService
 
-    @State private var selectedTab: AppTab = .allTask
+    @State private var selectedTab: AppTab = .timeline
     @State private var showTaskSheet = false
     @State private var selectedDate = Date()
     @State private var taskSheetMode: TaskSheetMode = .create
@@ -48,30 +46,9 @@ struct ContentView: View {
 
     var body: some View {
         TabView(selection: $selectedTab) {
-            Tab(AppTab.allTask.title, systemImage: AppTab.allTask.icon, value: AppTab.allTask) {
+            Tab(AppTab.timeline.title, systemImage: AppTab.timeline.icon, value: .timeline) {
                 NavigationStack {
                     TimelineView(
-                        filter: .all,
-                        tasks: $tasks,
-                        selectedDate: $selectedDate,
-                        onTaskTapped: openTaskDetail,
-                        onTaskStatusChanged: persistTaskStatus
-                    )
-                }
-            }
-            
-            Tab(AppTab.logPage.title, systemImage: AppTab.logPage.icon, value: AppTab.logPage) {
-                NavigationStack {
-                    MainLogView(
-                        
-                    )
-                }
-            }
-
-            Tab(AppTab.myTask.title, systemImage: AppTab.myTask.icon, value: .myTask) {
-                NavigationStack {
-                    TimelineView(
-                        filter: .mine,
                         tasks: $tasks,
                         selectedDate: $selectedDate,
                         onTaskTapped: openTaskDetail,
@@ -80,13 +57,21 @@ struct ContentView: View {
                 }
             }
 
-            Tab(AppTab.settings.title, systemImage: AppTab.settings.icon, value: .settings) {
+            Tab(AppTab.logPage.title, systemImage: AppTab.logPage.icon, value: .logPage) {
+                NavigationStack {
+                    MainLogView()
+                }
+            }
+
+            Tab(AppTab.profile.title, systemImage: AppTab.profile.icon, value: .profile) {
                 NavigationStack {
                     SettingsRootView()
                 }
             }
 
-            Tab(AppTab.addTask.title, systemImage: AppTab.addTask.icon, value: .addTask, role: .search) {}
+            if authService.currentRole.canCreateTask {
+                Tab(AppTab.addTask.title, systemImage: AppTab.addTask.icon, value: .addTask, role: .search) {}
+            }
         }
         .onChange(of: selectedTab) { oldValue, newValue in
             if newValue == .addTask {

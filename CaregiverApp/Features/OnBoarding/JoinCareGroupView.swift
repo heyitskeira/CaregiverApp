@@ -5,6 +5,8 @@ struct JoinCareGroupView: View {
     @FocusState private var focusedIndex: Int?
     @State private var pasteAlert = false
     
+    @Environment(AppRouter.self) private var router
+    
     
     
     var body: some View {
@@ -40,6 +42,9 @@ struct JoinCareGroupView: View {
                         .focused($focusedIndex, equals: i)
                     }
                 }
+                Button("Clear Code", action: {
+                    code = Array(repeating: "", count: 6)
+                }).foregroundStyle(Color.secondary)
                 Button(action: {
                     if let paste = UIPasteboard.general.string, paste.count == 6 {
                         for (idx, char) in paste.prefix(6).enumerated() {
@@ -63,6 +68,7 @@ struct JoinCareGroupView: View {
             
             Button(action: {
                 // Handle join group
+                router.screen = .successJoin
             }) {
                 Text("Join Care Group")
                     .fontWeight(.medium)
@@ -72,6 +78,7 @@ struct JoinCareGroupView: View {
                     .foregroundColor(.white)
                     .clipShape(Capsule())
             }
+            .disabled(code.joined().count != 6)
             .padding(.bottom, 60)
             Spacer()
         }
@@ -80,5 +87,8 @@ struct JoinCareGroupView: View {
 }
 
 #Preview {
-    JoinCareGroupView()
+    let router = AppRouter()
+
+    return JoinCareGroupView()
+        .environment(router)
 }

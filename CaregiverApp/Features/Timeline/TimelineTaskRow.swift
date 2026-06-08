@@ -124,6 +124,8 @@ struct TimelineTaskRow: View {
     let isLast: Bool
     var rowHeight: CGFloat = 80
     var onToggleComplete: (() -> Void)? = nil
+    var onAccept: (() -> Void)? = nil
+    var onDecline: (() -> Void)? = nil
     var onTap: (() -> Void)? = nil
 
     private var rowOpacity: Double {
@@ -148,7 +150,7 @@ struct TimelineTaskRow: View {
                                 .fontWeight(.bold)
                                 .foregroundColor(.gray)
                                 .frame(width: 50, height: max(50, rowHeight - 10))
-                                .background(Color.white)
+                                .background(Color(.systemBackground))
                                 .clipShape(Capsule())
                                 .overlay(
                                     Capsule()
@@ -217,36 +219,65 @@ struct TimelineTaskRow: View {
 
             Spacer()
 
+            // Action buttons
             if task.isPending {
-                HStack(spacing: 12) {
-                    Button(action: { onToggleComplete?() }) {
-                        Image(systemName: "checkmark.circle.fill")
-                            .font(.title2)
-                            .foregroundColor(.green)
+                // Pending tasks: gray X (decline), blue checkmark (accept)
+                HStack(spacing: 8) {
+                    Button(action: { onDecline?() }) {
+                        Image(systemName: "xmark")
+                            .font(.body.weight(.medium))
+                            .foregroundColor(.gray)
+                            .frame(width: 32, height: 32)
+                            .overlay(
+                                Circle()
+                                    .stroke(Color.gray.opacity(0.4), lineWidth: 1.5)
+                            )
                     }
 
-                    Button(action: {}) {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.title2)
-                            .foregroundColor(.red)
+                    Button(action: { onAccept?() }) {
+                        Image(systemName: "checkmark")
+                            .font(.body.weight(.medium))
+                            .foregroundColor(Color(hex: 0x2051B9))
+                            .frame(width: 32, height: 32)
+                            .overlay(
+                                Circle()
+                                    .stroke(Color(hex: 0x2051B9), lineWidth: 1.5)
+                            )
                     }
                 }
                 .padding(.top, 10)
             } else {
                 Button(action: { onToggleComplete?() }) {
                     if task.isCompleted {
-                        Image(systemName: "checkmark.circle.fill")
-                            .font(.title3)
-                            .foregroundStyle(.gray.opacity(0.5))
+                        // Completed: show gray X and blue filled checkmark
+                        HStack(spacing: 8) {
+                            Image(systemName: "xmark")
+                                .font(.body.weight(.medium))
+                                .foregroundColor(.gray)
+                                .frame(width: 32, height: 32)
+                                .overlay(
+                                    Circle()
+                                        .stroke(Color.gray.opacity(0.4), lineWidth: 1.5)
+                                )
+
+                            Image(systemName: "checkmark")
+                                .font(.body.weight(.bold))
+                                .foregroundColor(Color(hex: 0x2051B9))
+                                .frame(width: 32, height: 32)
+                                .overlay(
+                                    Circle()
+                                        .stroke(Color(hex: 0x2051B9), lineWidth: 1.5)
+                                )
+                        }
                     } else {
                         Circle()
                             .stroke(
                                 task.isOngoing
                                     ? Color(red: 0.13, green: 0.55, blue: 0.13)
                                     : Color(red: 0.1, green: 0.2, blue: 0.4),
-                                lineWidth: 3
+                                lineWidth: 2
                             )
-                            .frame(width: 22, height: 22)
+                            .frame(width: 24, height: 24)
                     }
                 }
                 .padding(.top, 10)

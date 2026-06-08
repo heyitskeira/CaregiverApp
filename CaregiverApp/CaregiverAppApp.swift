@@ -4,17 +4,21 @@
 //
 
 import SwiftUI
+import Observation
+
+@Observable
+class AppRouter {
+    var screen: AppScreen = .onboarding
+}
 
 @main
 struct CaregiverAppApp: App {
-    private let dependencies = AppDependencies.live
+    @State private var router = AppRouter()
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
-                .environment(\.contactRepository, dependencies.contactRepository)
-                .environment(\.taskRepository, dependencies.taskRepository)
-                .environment(\.patientRepository, dependencies.patientRepository)
+            RootView()
+                .environment(router)
         }
     }
 }

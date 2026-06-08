@@ -8,10 +8,16 @@
 import SwiftUI
 
 struct SignInview: View {
+    @Environment(AppRouter.self) private var router
     @Binding var authMode: AuthMode
     @State private var phone: String = ""
     @State private var password: String = ""
     @State private var showPassword: Bool = false
+
+    private var isFormComplete: Bool {
+        !phone.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        !password.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
 
     var body: some View {
         VStack {
@@ -89,7 +95,7 @@ struct SignInview: View {
             .padding(.vertical, 24)
 
             Button(action: {
-                // Handle sign in or sign up
+                router.screen = .home
             }) {
                 Text("Sign In")
                     .fontWeight(.medium)
@@ -99,6 +105,8 @@ struct SignInview: View {
                     .foregroundColor(.white)
                     .clipShape(Capsule())
             }
+            .disabled(!isFormComplete)
+            .opacity(isFormComplete ? 1 : 0.5)
 
             HStack(alignment: .center, spacing: 8) {
                 Rectangle()
@@ -126,6 +134,10 @@ struct SignInview: View {
                 .background(Color.black)
                 .foregroundColor(.white)
                 .clipShape(Capsule())
+                .overlay(
+                    RoundedRectangle(cornerRadius: 24)
+                        .stroke(Color.primary, lineWidth: 1)
+                )
             }
 
             HStack {

@@ -1,18 +1,46 @@
-import SwiftUI
 import PhotosUI
+import SwiftUI
 
 struct PatientInfoView: View {
+    // MARK: - State
     @State private var fullName = ""
-    @State private var dob = ""
+    @State private var dob: Date? = nil
     @State private var gender = ""
     @State private var bloodType = ""
-    @State private var height = ""
+    @State private var height: Double? = nil
+    @State private var weight: Double? = nil
     @State private var allergies = ""
     @State private var favoriteFood = ""
     @State private var healthProfile = ""
-    
+
     @State private var selectedImage: UIImage? = nil
     @State private var showImagePicker = false
+
+    // MARK: - Constants
+    let genderOptions = ["", "Male", "Female"]
+    let bloodTypeOptions = [
+        "", "A+", "B+", "AB+", "O+", "A-", "B-", "AB-", "O-",
+    ]
+
+    // MARK: - Environment
+
+    @Environment(AppRouter.self) private var router
+
+    // MARK: - Computed
+
+    private var isFormComplete: Bool {
+        guard
+            !fullName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+            dob != nil,
+            !gender.isEmpty,
+            gender != "",
+            !bloodType.isEmpty,
+            bloodType != ""
+        else { return false }
+        return true
+    }
+
+    // MARK: - Body
 
     var body: some View {
         ScrollView {
@@ -22,13 +50,14 @@ struct PatientInfoView: View {
                         .font(.largeTitle).bold()
                         .foregroundStyle(Color.accent)
                         .frame(maxWidth: .infinity, alignment: .leading)
+
                     Text(
                         "To create care group please tell us about the elderly receiving care"
                     )
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .font(.title3)
                 }
-                
+
                 Button(action: { showImagePicker = true }) {
                     ZStack(alignment: .bottomTrailing) {
                         if let image = selectedImage {
@@ -47,9 +76,14 @@ struct PatientInfoView: View {
                                         .font(.system(size: 44))
                                 )
                         }
+
                         ZStack {
-                            Circle().fill(Color.accentColor).frame(width: 34, height: 34)
-                            Image(systemName: "camera.fill").foregroundColor(.white).font(.system(size: 16, weight: .bold))
+                            Circle()
+                                .fill(Color.accentColor)
+                                .frame(width: 34, height: 34)
+                            Image(systemName: "camera.fill")
+                                .foregroundColor(.white)
+                                .font(.system(size: 16, weight: .bold))
                         }
                         .offset(x: 4, y: 6)
                     }
@@ -65,6 +99,7 @@ struct PatientInfoView: View {
                         Image(systemName: "person.fill")
                             .foregroundColor(.accentColor)
                             .frame(width: 22)
+
                         TextField("Full Name", text: $fullName)
                             .textContentType(.name)
                     }
@@ -80,8 +115,19 @@ struct PatientInfoView: View {
                         Image(systemName: "calendar")
                             .foregroundColor(.accentColor)
                             .frame(width: 22)
-                        TextField("Date of Birth", text: $dob)
-                            .keyboardType(.numbersAndPunctuation)
+                        Text("Date of Birth").frame(
+                            maxWidth: .infinity,
+                            alignment: .leading
+                        ).foregroundStyle(Color(.secondaryLabel))
+
+                        DatePicker(
+                            "",
+                            selection: Binding(
+                                get: { dob ?? Date() },
+                                set: { dob = $0 }
+                            ),
+                            displayedComponents: .date
+                        )
                     }
                     .frame(height: 22)
                     .padding(10)
@@ -95,11 +141,31 @@ struct PatientInfoView: View {
                         .font(.headline)
                         .foregroundColor(.primary)
                         .padding(.bottom, 2)
+
                     HStack(spacing: 16) {
-                        Image(systemName: "person.circle")
-                            .foregroundColor(.accentColor)
-                            .frame(width: 22)
-                        TextField("Gender", text: $gender)
+                        Image(
+                            systemName:
+                                "figure.stand.dress.line.vertical.figure"
+                        )
+                        .foregroundColor(.accentColor)
+                        .frame(width: 22)
+
+                        Text("Gender")
+                            .foregroundStyle(Color.secondary)
+
+                        Picker("Gender", selection: $gender) {
+                            ForEach(genderOptions, id: \.self) { option in
+                                if option.isEmpty {
+                                    Text("Select Gender")
+                                        .tag(option)
+                                        .disabled(true)
+                                } else {
+                                    Text(option).tag(option)
+                                }
+                            }
+                        }
+                        .pickerStyle(MenuPickerStyle())
+                        .frame(maxWidth: .infinity, alignment: .trailing)
                     }
                     .frame(height: 22)
                     .padding(10)
@@ -113,7 +179,23 @@ struct PatientInfoView: View {
                         Image(systemName: "drop.fill")
                             .foregroundColor(.accentColor)
                             .frame(width: 22)
-                        TextField("Blood Type", text: $bloodType)
+
+                        Text("Blood Type")
+                            .foregroundStyle(Color.secondary)
+
+                        Picker("Blood Type", selection: $bloodType) {
+                            ForEach(bloodTypeOptions, id: \.self) { option in
+                                if option.isEmpty {
+                                    Text("Select Blood Type")
+                                        .tag(option)
+                                        .disabled(true)
+                                } else {
+                                    Text(option).tag(option)
+                                }
+                            }
+                        }
+                        .pickerStyle(MenuPickerStyle())
+                        .frame(maxWidth: .infinity, alignment: .trailing)
                     }
                     .frame(height: 22)
                     .padding(10)
@@ -127,8 +209,33 @@ struct PatientInfoView: View {
                         Image(systemName: "ruler")
                             .foregroundColor(.accentColor)
                             .frame(width: 22)
-                        TextField("Height (cm)", text: $height)
-                            .keyboardType(.numberPad)
+
+                        TextField(
+                            "Height (cm)",
+                            value: $height,
+                            format: .number
+                        )
+                        .keyboardType(.decimalPad)
+                    }
+                    .frame(height: 22)
+                    .padding(10)
+                    .cornerRadius(8)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(.gray, lineWidth: 1)
+                    )
+
+                    HStack(spacing: 16) {
+                        Image(systemName: "scalemass")
+                            .foregroundColor(.accentColor)
+                            .frame(width: 22)
+
+                        TextField(
+                            "Weight (kg)",
+                            value: $weight,
+                            format: .number
+                        )
+                        .keyboardType(.decimalPad)
                     }
                     .frame(height: 22)
                     .padding(10)
@@ -142,10 +249,12 @@ struct PatientInfoView: View {
                         .font(.headline)
                         .foregroundColor(.primary)
                         .padding(.bottom, 2)
+
                     HStack(spacing: 16) {
                         Image(systemName: "bandage.fill")
                             .foregroundColor(.accentColor)
                             .frame(width: 22)
+
                         TextField("Allergies", text: $allergies)
                     }
                     .frame(height: 22)
@@ -155,10 +264,12 @@ struct PatientInfoView: View {
                         RoundedRectangle(cornerRadius: 8)
                             .stroke(.gray, lineWidth: 1)
                     )
+
                     HStack(spacing: 16) {
-                        Image(systemName: "heart.text.square")
+                        Image(systemName: "fork.knife")
                             .foregroundColor(.accentColor)
                             .frame(width: 22)
+
                         TextField("Favorite Food", text: $favoriteFood)
                     }
                     .frame(height: 22)
@@ -168,10 +279,12 @@ struct PatientInfoView: View {
                         RoundedRectangle(cornerRadius: 8)
                             .stroke(.gray, lineWidth: 1)
                     )
+
                     HStack(spacing: 16) {
                         Image(systemName: "stethoscope")
                             .foregroundColor(.accentColor)
                             .frame(width: 22)
+
                         TextField(
                             "Health Profile (e.g. Having cancer)",
                             text: $healthProfile
@@ -184,11 +297,11 @@ struct PatientInfoView: View {
                         RoundedRectangle(cornerRadius: 8)
                             .stroke(.gray, lineWidth: 1)
                     )
-
-                }.padding(.vertical, 24)
+                }
+                .padding(.vertical, 24)
 
                 Button(action: {
-                    // Handle create care group
+                    router.screen = .successCreate
                 }) {
                     Text("Create Care Group")
                         .fontWeight(.medium)
@@ -198,6 +311,8 @@ struct PatientInfoView: View {
                         .foregroundColor(.white)
                         .clipShape(Capsule())
                 }
+                .disabled(!isFormComplete)
+                .opacity(isFormComplete ? 1 : 0.5)
             }
             .padding()
         }
@@ -205,30 +320,49 @@ struct PatientInfoView: View {
 }
 
 #Preview {
+    let router = AppRouter()
+
     PatientInfoView()
+        .environment(router)
 }
 
 struct ImagePicker: UIViewControllerRepresentable {
     @Binding var image: UIImage?
+
     func makeCoordinator() -> Coordinator { Coordinator(self) }
-    class Coordinator: NSObject, UINavigationControllerDelegate, UIImagePickerControllerDelegate {
+
+    class Coordinator: NSObject, UINavigationControllerDelegate,
+        UIImagePickerControllerDelegate
+    {
         let parent: ImagePicker
+
         init(_ parent: ImagePicker) { self.parent = parent }
-        func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
+
+        func imagePickerController(
+            _ picker: UIImagePickerController,
+            didFinishPickingMediaWithInfo info: [UIImagePickerController
+                .InfoKey: Any]
+        ) {
             if let uiImage = info[.originalImage] as? UIImage {
                 parent.image = uiImage
             }
             picker.dismiss(animated: true)
         }
+
         func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
             picker.dismiss(animated: true)
         }
     }
+
     func makeUIViewController(context: Context) -> UIImagePickerController {
         let picker = UIImagePickerController()
         picker.delegate = context.coordinator
         picker.allowsEditing = false
         return picker
     }
-    func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
+
+    func updateUIViewController(
+        _ uiViewController: UIImagePickerController,
+        context: Context
+    ) {}
 }

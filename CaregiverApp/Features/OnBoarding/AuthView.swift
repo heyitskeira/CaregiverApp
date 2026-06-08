@@ -5,13 +5,16 @@ enum AuthMode {
 }
 
 struct AuthView: View {
-    @State private var authMode: AuthMode = .signIn
+    @State var authMode: AuthMode = .signIn
+    @Environment(AppRouter.self) private var router
     
     var body: some View {
         if (authMode == .signIn) {
             SignInview(authMode: $authMode)
+                .environment(router)
         } else {
             SignUpView(authMode: $authMode)
+                .environment(router)
         }
     }
 }
