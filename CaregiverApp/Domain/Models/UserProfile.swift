@@ -5,8 +5,7 @@ enum CaregiverRole: String, Codable, Sendable, CaseIterable {
     case helper
 }
 
-/// Signed-in app user. Maps to `auth.users` in Supabase via matching UUID.
-struct UserProfile: Identifiable, Hashable, Codable, Sendable {
+struct UserProfile: Identifiable, Hashable, Codable, Sendable { // Signed-in app user. Maps to `auth.users` in Supabase via matching UUID.
     let id: UUID
     var name: String
     var phone: String

@@ -221,7 +221,6 @@ struct TimelineTaskRow: View {
 
             // Action buttons
             if task.isPending {
-                // Pending tasks: gray X (decline), blue checkmark (accept)
                 HStack(spacing: 8) {
                     Button(action: { onDecline?() }) {
                         Image(systemName: "xmark")
@@ -249,7 +248,6 @@ struct TimelineTaskRow: View {
             } else {
                 Button(action: { onToggleComplete?() }) {
                     if task.isCompleted {
-                        // Completed: show gray X and blue filled checkmark
                         HStack(spacing: 8) {
                             Image(systemName: "xmark")
                                 .font(.body.weight(.medium))
