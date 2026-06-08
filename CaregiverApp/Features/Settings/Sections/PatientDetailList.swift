@@ -7,22 +7,35 @@
 import SwiftUI
 
 struct PatientDetailList: View {
-    
+
     var menuName: String
     var menuImage: String
-    var menuData : String
-    
+    var menuData: String
+
     var body: some View {
-        HStack {
-            Image(systemName: menuImage)
-                .frame(width: 20, height: 20)
-                .clipShape(Circle())
-            
+        HStack(spacing: 12) {
+            Circle()
+                .fill(.accent.opacity(0.2))
+                .frame(width: 35, height: 35)
+                .overlay(
+                    Image(systemName: menuImage)
+                        .foregroundColor(.accent)
+                        .font(.system(size: 20))
+                )
+
             Text(menuName)
-            
+
             Spacer()
-            
+
             Text(menuData)
         }
     }
+}
+
+#Preview {
+    PatientDetailList(
+        menuName: "Allergies",
+        menuImage: "exclamationmark.square.fill",
+        menuData: "alergi"
+    )
 }
