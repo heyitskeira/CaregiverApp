@@ -3,18 +3,41 @@
 //  CaregiverApp
 //
 
+import Observation
 import SwiftUI
+
+@Observable
+class AppRouter {
+    var screen: AppScreen = .onboarding
+}
+
+enum AppTheme: String {
+    case light
+    case dark
+    case auto
+}
 
 @main
 struct CaregiverAppApp: App {
-    private let dependencies = AppDependencies.live
+    @State private var router = AppRouter()
+    @AppStorage("theme") private var theme = AppTheme.light.rawValue
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
-                .environment(\.contactRepository, dependencies.contactRepository)
-                .environment(\.taskRepository, dependencies.taskRepository)
-                .environment(\.patientRepository, dependencies.patientRepository)
+            RootView()
+                .environment(router)
+                .preferredColorScheme(preferredColorScheme)
+        }
+    }
+
+    private var preferredColorScheme: ColorScheme? {
+        switch AppTheme(rawValue: theme) ?? .light {
+        case .light:
+            return .light
+        case .dark:
+            return .dark
+        case .auto:
+            return nil
         }
     }
 }

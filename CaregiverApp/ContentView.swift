@@ -30,7 +30,7 @@ enum AppTab: String, CaseIterable {
     }
 }
 
-struct ContentView: View {  
+struct ContentView: View {
     @Environment(\.taskRepository) private var taskRepository
     @Environment(\.contactRepository) private var contactRepository
     @Environment(\.authService) private var authService
@@ -46,7 +46,11 @@ struct ContentView: View {
 
     var body: some View {
         TabView(selection: $selectedTab) {
-            Tab(AppTab.timeline.title, systemImage: AppTab.timeline.icon, value: .timeline) {
+            Tab(
+                AppTab.timeline.title,
+                systemImage: AppTab.timeline.icon,
+                value: .timeline
+            ) {
                 NavigationStack {
                     TimelineView(
                         tasks: $tasks,
@@ -57,20 +61,31 @@ struct ContentView: View {
                 }
             }
 
-            Tab(AppTab.logPage.title, systemImage: AppTab.logPage.icon, value: .logPage) {
+            Tab(
+                AppTab.logPage.title,
+                systemImage: AppTab.logPage.icon,
+                value: .logPage
+            ) {
                 NavigationStack {
                     MainLogView()
                 }
             }
 
-            Tab(AppTab.profile.title, systemImage: AppTab.profile.icon, value: .profile) {
-                NavigationStack {
-                    SettingsRootView()
-                }
+            Tab(
+                AppTab.profile.title,
+                systemImage: AppTab.profile.icon,
+                value: .profile
+            ) {
+                ProfileRootView()
             }
 
             if authService.currentRole.canCreateTask {
-                Tab(AppTab.addTask.title, systemImage: AppTab.addTask.icon, value: .addTask, role: .search) {}
+                Tab(
+                    AppTab.addTask.title,
+                    systemImage: AppTab.addTask.icon,
+                    value: .addTask,
+                    role: .search
+                ) {}
             }
         }
         .onChange(of: selectedTab) { oldValue, newValue in
@@ -83,20 +98,31 @@ struct ContentView: View {
         .task(id: reloadToken) {
             await reloadTasks()
         }
-        .sheet(isPresented: $showTaskSheet, onDismiss: {
-            reloadToken = UUID()
-        }) {
+        .sheet(
+            isPresented: $showTaskSheet,
+            onDismiss: {
+                reloadToken = UUID()
+            }
+        ) {
             TaskSheetView(mode: .create) { timelineModel in
                 Task { await persistTimelineModel(timelineModel) }
             }
         }
-        .sheet(isPresented: $showDetailSheet, onDismiss: {
-            reloadToken = UUID()
-        }) {
+        .sheet(
+            isPresented: $showDetailSheet,
+            onDismiss: {
+                reloadToken = UUID()
+            }
+        ) {
             TaskSheetView(
                 mode: taskSheetMode,
                 onUpdate: { timelineModel in
-                    Task { await persistTimelineModel(timelineModel, updating: true) }
+                    Task {
+                        await persistTimelineModel(
+                            timelineModel,
+                            updating: true
+                        )
+                    }
                 }
             )
         }
@@ -118,7 +144,10 @@ struct ContentView: View {
         tasks = store?.tasks ?? []
     }
 
-    private func persistTimelineModel(_ timelineModel: TimelineTaskModel, updating: Bool = false) async {
+    private func persistTimelineModel(
+        _ timelineModel: TimelineTaskModel,
+        updating: Bool = false
+    ) async {
         let careTask = CareTask.from(timelineModel: timelineModel)
         do {
             if updating {
@@ -142,7 +171,13 @@ struct ContentView: View {
 
 #Preview {
     ContentView()
-        .environment(\.contactRepository, AppDependencies.live.contactRepository)
+        .environment(
+            \.contactRepository,
+            AppDependencies.live.contactRepository
+        )
         .environment(\.taskRepository, AppDependencies.live.taskRepository)
-        .environment(\.patientRepository, AppDependencies.live.patientRepository)
+        .environment(
+            \.patientRepository,
+            AppDependencies.live.patientRepository
+        )
 }

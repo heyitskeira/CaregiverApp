@@ -8,6 +8,7 @@
 import SwiftUI
 
 struct SignUpView: View {
+    @Environment(AppRouter.self) private var router
     @Binding var authMode: AuthMode
     @State private var name: String = ""
     @State private var email: String = ""
@@ -16,6 +17,15 @@ struct SignUpView: View {
     @State private var passwordConfirm: String = ""
     @State private var showPassword: Bool = false
     @State private var showPasswordConfirm: Bool = false
+    
+    private var isFormComplete: Bool {
+        !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        !email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        !phone.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        !password.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        !passwordConfirm.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        password == passwordConfirm
+    }
 
     var body: some View {
         VStack {
@@ -34,7 +44,7 @@ struct SignUpView: View {
                     Image(systemName: "person.fill")
                         .foregroundColor(.accentColor)
                         .frame(width: 22)
-                    TextField("Email", text: $email)
+                    TextField("Full Name", text: $name)
                         .textContentType(.emailAddress)
                         .autocapitalization(.none)
                 }
@@ -148,7 +158,7 @@ struct SignUpView: View {
             .padding(.vertical, 24)
 
             Button(action: {
-                // Handle sign in or sign up
+                router.screen = .getStarted
             }) {
                 Text("Create Account")
                     .fontWeight(.medium)
@@ -158,6 +168,8 @@ struct SignUpView: View {
                     .foregroundColor(.white)
                     .clipShape(Capsule())
             }
+            .disabled(!isFormComplete)
+            .opacity(isFormComplete ? 1 : 0.5)
 
             HStack(alignment: .center, spacing: 8) {
                 Rectangle()
@@ -185,6 +197,10 @@ struct SignUpView: View {
                 .background(Color.black)
                 .foregroundColor(.white)
                 .clipShape(Capsule())
+                .overlay(
+                    RoundedRectangle(cornerRadius: 24)
+                        .stroke(Color.primary, lineWidth: 1)
+                )
             }
 
             HStack {
