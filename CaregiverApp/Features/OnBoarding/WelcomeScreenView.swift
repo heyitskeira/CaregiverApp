@@ -72,10 +72,10 @@ struct WelcomeScreenView: View {
                 Spacer()
                 VStack(spacing: 32){
                     // Logo placeholder
-                    Circle()
-                        .fill(Color.accentColor)
+                    Image("Logo")
+                        .resizable()
+                        .scaledToFit()
                         .frame(width: 200, height: 200)
-                        .overlay(Text("Logo").font(.title3).foregroundColor(.white))
                     VStack(spacing: 12) {
                         VStack {
                             Text("Welcome to")
@@ -83,7 +83,7 @@ struct WelcomeScreenView: View {
                                 .fontWeight(.heavy)
                                 .foregroundColor(.primary)
                             
-                            Text("Caregiver APP")
+                            Text("JagaKin")
                                 .font(.largeTitle)
                                 .fontWeight(.heavy)
                                 .foregroundColor(.accent)

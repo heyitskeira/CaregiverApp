@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXFileReference section */
-		22F377102FC5236600AC3AB0 /* CaregiverApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CaregiverApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		22F377102FC5236600AC3AB0 /* JagaKin.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = JagaKin.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -40,7 +40,7 @@
 		22F377112FC5236600AC3AB0 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				22F377102FC5236600AC3AB0 /* CaregiverApp.app */,
+				22F377102FC5236600AC3AB0 /* JagaKin.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -48,9 +48,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		22F3770F2FC5236600AC3AB0 /* CaregiverApp */ = {
+		22F3770F2FC5236600AC3AB0 /* JagaKin */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 22F3771B2FC5236600AC3AB0 /* Build configuration list for PBXNativeTarget "CaregiverApp" */;
+			buildConfigurationList = 22F3771B2FC5236600AC3AB0 /* Build configuration list for PBXNativeTarget "JagaKin" */;
 			buildPhases = (
 				22F3770C2FC5236600AC3AB0 /* Sources */,
 				22F3770D2FC5236600AC3AB0 /* Frameworks */,
@@ -63,11 +63,11 @@
 			fileSystemSynchronizedGroups = (
 				22F377122FC5236600AC3AB0 /* CaregiverApp */,
 			);
-			name = CaregiverApp;
+			name = JagaKin;
 			packageProductDependencies = (
 			);
 			productName = CaregiverApp;
-			productReference = 22F377102FC5236600AC3AB0 /* CaregiverApp.app */;
+			productReference = 22F377102FC5236600AC3AB0 /* JagaKin.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -85,7 +85,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 22F3770B2FC5236600AC3AB0 /* Build configuration list for PBXProject "CaregiverApp" */;
+			buildConfigurationList = 22F3770B2FC5236600AC3AB0 /* Build configuration list for PBXProject "JagaKin" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -101,7 +101,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				22F3770F2FC5236600AC3AB0 /* CaregiverApp */,
+				22F3770F2FC5236600AC3AB0 /* JagaKin */,
 			);
 		};
 /* End PBXProject section */
@@ -313,7 +313,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		22F3770B2FC5236600AC3AB0 /* Build configuration list for PBXProject "CaregiverApp" */ = {
+		22F3770B2FC5236600AC3AB0 /* Build configuration list for PBXProject "JagaKin" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				22F377192FC5236600AC3AB0 /* Debug */,
@@ -322,7 +322,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		22F3771B2FC5236600AC3AB0 /* Build configuration list for PBXNativeTarget "CaregiverApp" */ = {
+		22F3771B2FC5236600AC3AB0 /* Build configuration list for PBXNativeTarget "JagaKin" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				22F3771C2FC5236600AC3AB0 /* Debug */,
