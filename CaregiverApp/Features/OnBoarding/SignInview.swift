@@ -8,6 +8,7 @@
 import SwiftUI
 
 struct SignInview: View {
+    @Environment(AppRouter.self) private var router
     @Binding var authMode: AuthMode
     @State private var phone: String = ""
     @State private var password: String = ""
@@ -89,7 +90,7 @@ struct SignInview: View {
             .padding(.vertical, 24)
 
             Button(action: {
-                // Handle sign in or sign up
+                router.screen = .home
             }) {
                 Text("Sign In")
                     .fontWeight(.medium)

@@ -1,7 +1,8 @@
 import SwiftUI
 
 struct GetStartedView: View {
-    @State private var showCreate = false
+    @Environment(AppRouter.self) private var router 
+    @State private var showCreate = false 
     @State private var showJoin = false
 
     var body: some View {
@@ -53,7 +54,7 @@ struct GetStartedView: View {
                     )
                 }
                 .fullScreenCover(isPresented: $showCreate) {
-                    PatientInfoView()
+                    PatientInfoView().environment(router)
                 }
                 
                 Button(action: {showJoin.toggle()}) {
@@ -92,7 +93,7 @@ struct GetStartedView: View {
                     )
                 }
                 .fullScreenCover(isPresented: $showJoin) {
-                    JoinCareGroupView()
+                    JoinCareGroupView().environment(router)
                 }
             }
             .foregroundStyle(.black)

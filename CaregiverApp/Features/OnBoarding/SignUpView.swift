@@ -8,6 +8,7 @@
 import SwiftUI
 
 struct SignUpView: View {
+    @Environment(AppRouter.self) private var router
     @Binding var authMode: AuthMode
     @State private var name: String = ""
     @State private var email: String = ""
@@ -148,7 +149,7 @@ struct SignUpView: View {
             .padding(.vertical, 24)
 
             Button(action: {
-                // Handle sign in or sign up
+                router.screen = .getStarted
             }) {
                 Text("Create Account")
                     .fontWeight(.medium)
