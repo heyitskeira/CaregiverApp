@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct WelcomeScreenView: View {
+    @Environment(AppRouter.self) private var router
+    
     var body: some View {
         ZStack {
             GeometryReader { geo in
@@ -42,7 +44,8 @@ struct WelcomeScreenView: View {
                                 Color(red: 234 / 255, green: 241 / 255, blue: 250 / 255)
                             ],
                             startPoint: .top,
-                            endPoint: UnitPoint(x:0.5, y :0.8)                        )
+                            endPoint: UnitPoint(x:0.5, y :0.8)
+                        )
                     )
                     .frame(width: 140, height: 200)
                     .offset(x: geo.size.width - 50, y: geo.size.height - 400)
@@ -101,7 +104,7 @@ struct WelcomeScreenView: View {
                 }
                 VStack(spacing: 16) {
                     Button(action: {
-                        // Handle create account
+                        router.screen = .signUp
                     }) {
                         Text("Create Account")
                             .fontWeight(.semibold)
@@ -113,7 +116,7 @@ struct WelcomeScreenView: View {
                     }
                     
                     Button(action: {
-                        // Handle sign in
+                        router.screen = .signIn
                     }) {
                         Text("Sign In")
                             .fontWeight(.semibold)

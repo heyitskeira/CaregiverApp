@@ -5,6 +5,8 @@ struct JoinCareGroupView: View {
     @FocusState private var focusedIndex: Int?
     @State private var pasteAlert = false
     
+    @Environment(AppRouter.self) private var router
+    
     
     
     var body: some View {
@@ -63,6 +65,7 @@ struct JoinCareGroupView: View {
             
             Button(action: {
                 // Handle join group
+                router.screen = .successJoin
             }) {
                 Text("Join Care Group")
                     .fontWeight(.medium)
@@ -77,8 +80,4 @@ struct JoinCareGroupView: View {
         }
         .padding()
     }
-}
-
-#Preview {
-    JoinCareGroupView()
 }

@@ -13,7 +13,8 @@ struct PatientInfoView: View {
     
     @State private var selectedImage: UIImage? = nil
     @State private var showImagePicker = false
-
+    
+    @Environment(AppRouter.self) private var router
     var body: some View {
         ScrollView {
             VStack {
@@ -189,6 +190,7 @@ struct PatientInfoView: View {
 
                 Button(action: {
                     // Handle create care group
+                    router.screen = .successCreate
                 }) {
                     Text("Create Care Group")
                         .fontWeight(.medium)
