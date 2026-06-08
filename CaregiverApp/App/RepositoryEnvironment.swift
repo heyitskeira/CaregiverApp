@@ -12,6 +12,10 @@ private struct PatientRepositoryKey: EnvironmentKey {
     @MainActor static let defaultValue: any PatientRepository = MockPatientRepository()
 }
 
+private struct AuthServiceKey: EnvironmentKey {
+    @MainActor static let defaultValue: any AuthService = MockAuthService()
+}
+
 extension EnvironmentValues {
     var contactRepository: any ContactRepository {
         get { self[ContactRepositoryKey.self] }
@@ -26,5 +30,10 @@ extension EnvironmentValues {
     var patientRepository: any PatientRepository {
         get { self[PatientRepositoryKey.self] }
         set { self[PatientRepositoryKey.self] = newValue }
+    }
+
+    var authService: any AuthService {
+        get { self[AuthServiceKey.self] }
+        set { self[AuthServiceKey.self] = newValue }
     }
 }
