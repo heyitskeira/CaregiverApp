@@ -12,9 +12,11 @@ struct TimelineView: View {
     var myTasksAssigneeID: UUID = SeedData.myTasksViewerContactID
     var onTaskTapped: ((TimelineTaskModel) -> Void)? = nil
     var onTaskStatusChanged: ((TimelineTaskModel) -> Void)? = nil
+    var onTaskDeleted: ((UUID) -> Void)? = nil
 
     @State private var currentTime = Date()
     @State private var activeFilter: TimelineFilter = .all
+    @State private var showDatePickerSheet = false
     private let timer = Timer.publish(every: 30, on: .main, in: .common).autoconnect()
 
     private let pointsPerMinute: CGFloat = 1.2
@@ -36,7 +38,11 @@ struct TimelineView: View {
         case .all:
             filtered = dayTasks
         case .mine:
-            filtered = dayTasks.filter { $0.assigneeIDs.contains(myTasksAssigneeID) }
+            filtered = dayTasks.filter {
+                $0.primaryAssigneeID == myTasksAssigneeID
+                || $0.backupAssigneeID == myTasksAssigneeID
+                || $0.isRequested
+            }
         }
 
         return filtered.sorted { $0.startDate < $1.startDate }
@@ -54,13 +60,13 @@ struct TimelineView: View {
         let dayEnd = calendar.date(byAdding: .day, value: 1, to: dayStart)!
         guard now >= dayStart && now < dayEnd else { return nil }
 
-        var offset: CGFloat = 0
+        var offset: CGFloat = 8
 
         for (index, task) in filteredTasks.enumerated() {
             let height = taskHeight(for: task)
 
             if now < task.startDate {
-                return offset + 10
+                return offset
             }
 
             if now >= task.startDate && now <= task.endDate {
@@ -70,14 +76,10 @@ struct TimelineView: View {
                 return offset + height * fraction
             }
 
-            offset += height
-
-            if index < filteredTasks.count - 1 {
-                offset += gapBetweenTasks
-            }
+            offset += height + gapBetweenTasks
         }
 
-        return offset + 10
+        return offset
     }
 
     private func weekDates(around date: Date) -> [Date] {
@@ -89,14 +91,17 @@ struct TimelineView: View {
         return (0..<7).compactMap { calendar.date(byAdding: .day, value: $0, to: sunday) }
     }
 
-    // MARK: - Body
     var body: some View {
         VStack(spacing: 0) {
-            headerSection
-            weekCalendarSection
-            filterPillToggle
-                .padding(.top, 16)
+            VStack(spacing: 0) {
+                headerSection
+                weekCalendarSection
+            }
+            .background(Color(.systemGroupedBackground))
+
             Divider()
+
+            filterPillToggle
                 .padding(.top, 12)
             timelineScrollSection
         }
@@ -104,28 +109,32 @@ struct TimelineView: View {
         .onReceive(timer) { _ in
             currentTime = Date()
         }
+        .sheet(isPresented: $showDatePickerSheet) {
+            datePickerSheet
+        }
     }
 
-    // MARK: - Header
     private var headerSection: some View {
         HStack {
-            HStack(spacing: 4) {
-                // "26 May" in blue
-                Text(headerDateString)
-                    .font(.title2)
-                    .fontWeight(.bold)
-                    .foregroundStyle(Color(hex: 0x2051B9))
+            Button(action: { showDatePickerSheet = true }) {
+                HStack(spacing: 4) {
+                    Text(headerDateString)
+                        .font(.title2)
+                        .fontWeight(.bold)
+                        .foregroundStyle(Color(hex: 0x2051B9))
 
-                // "2026 >" in black
-                Text(selectedDate.formatted(.dateTime.year()))
-                    .font(.title2)
-                    .fontWeight(.bold)
+                    Text(selectedDate.formatted(.dateTime.year()))
+                        .font(.title2)
+                        .fontWeight(.bold)
+                        .foregroundStyle(.primary)
 
-                Image(systemName: "chevron.right")
-                    .font(.caption)
-                    .fontWeight(.bold)
-                    .foregroundStyle(.primary)
+                    Image(systemName: "chevron.right")
+                        .font(.caption)
+                        .fontWeight(.bold)
+                        .foregroundStyle(.primary)
+                }
             }
+            .buttonStyle(.plain)
 
             Spacer()
 
@@ -154,7 +163,29 @@ struct TimelineView: View {
         return formatter.string(from: selectedDate)
     }
 
-    // MARK: - Week Calendar
+    private var datePickerSheet: some View {
+        NavigationStack {
+            DatePicker(
+                "Select Date",
+                selection: $selectedDate,
+                displayedComponents: .date
+            )
+            .datePickerStyle(.graphical)
+            .tint(Color(hex: 0x2051B9))
+            .padding()
+            .navigationTitle("Jump to Date")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") {
+                        showDatePickerSheet = false
+                    }
+                }
+            }
+        }
+        .presentationDetents([.medium])
+    }
+
     private var weekCalendarSection: some View {
         HStack(spacing: 0) {
             let week = weekDates(around: selectedDate)
@@ -179,7 +210,7 @@ struct TimelineView: View {
 
                         Text("\(calendar.component(.day, from: day))")
                             .font(.system(size: 16, weight: isSelected ? .bold : .medium))
-                            .foregroundStyle(isSelected ? .primary : .primary)
+                            .foregroundStyle(.primary)
                             .frame(width: 36, height: 36)
                             .background {
                                 if isSelected {
@@ -196,7 +227,6 @@ struct TimelineView: View {
         .padding(.top, 16)
     }
 
-    // MARK: - Filter Pill Toggle
     private var filterPillToggle: some View {
         HStack(spacing: 0) {
             ForEach(TimelineFilter.allCases, id: \.self) { tab in
@@ -227,25 +257,18 @@ struct TimelineView: View {
         .padding(.horizontal)
     }
 
-    // MARK: - Timeline Scroll
     private var timelineScrollSection: some View {
         Group {
             if filteredTasks.isEmpty {
-                VStack {
-                    Spacer()
-                    Text("No Task Added")
-                        .font(.body)
-                        .foregroundStyle(.gray)
-                    Spacer()
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                emptyStateView
             } else {
                 ScrollView {
                     ZStack(alignment: .topLeading) {
-                        VStack(spacing: gapBetweenTasks) {
+                        VStack(spacing: 0) {
                             ForEach(filteredTasks.indices, id: \.self) { index in
                                 let task = filteredTasks[index]
                                 let height = taskHeight(for: task)
+
                                 TimelineTaskRow(
                                     task: task,
                                     isLast: index == filteredTasks.count - 1,
@@ -263,10 +286,11 @@ struct TimelineView: View {
                                         onTaskTapped?(task)
                                     }
                                 )
-                                .padding(.bottom, index == filteredTasks.count - 1 ? 120 : 0)
+                                .padding(.bottom, index == filteredTasks.count - 1 ? 120 : gapBetweenTasks)
                             }
                         }
                         .padding(.horizontal)
+                        .padding(.top, 8)
 
                         if let offset = currentTimeOffset() {
                             CurrentTimeIndicator(currentTime: currentTime)
@@ -276,6 +300,29 @@ struct TimelineView: View {
                 }
             }
         }
+    }
+
+    private var emptyStateView: some View {
+        VStack(spacing: 12) {
+            Spacer()
+
+            Image(systemName: "clipboard")
+                .font(.system(size: 60))
+                .foregroundStyle(.gray.opacity(0.4))
+
+            Text("No task yet")
+                .font(.title3)
+                .fontWeight(.semibold)
+                .foregroundStyle(.primary)
+
+            Text("Create your first task by clicking\nthe + button")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+
+            Spacer()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private func toggleTask(_ task: TimelineTaskModel) {
@@ -293,12 +340,20 @@ struct TimelineView: View {
     private func acceptTask(_ task: TimelineTaskModel) {
         guard let index = tasks.firstIndex(where: { $0.id == task.id }) else { return }
         tasks[index].state = .assigned
+        tasks[index].isRecentlyAccepted = true
+        tasks[index].isRequested = false
         onTaskStatusChanged?(tasks[index])
     }
 
     private func declineTask(_ task: TimelineTaskModel) {
         guard let index = tasks.firstIndex(where: { $0.id == task.id }) else { return }
-        tasks.remove(at: index)
+        tasks[index].isRequested = false
+        onTaskStatusChanged?(tasks[index])
+    }
+
+    private func deleteTask(_ task: TimelineTaskModel) {
+        tasks.removeAll { $0.id == task.id }
+        onTaskDeleted?(task.id)
     }
 }
 
@@ -331,7 +386,6 @@ struct CurrentTimeIndicator: View {
     }
 }
 
-// MARK: - Color hex extension
 extension Color {
     init(hex: UInt, opacity: Double = 1.0) {
         self.init(

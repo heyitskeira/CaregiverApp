@@ -9,22 +9,6 @@ import SwiftUI
 import PhotosUI
 import UniformTypeIdentifiers
 
-enum RepeatOption: String, CaseIterable {
-    case none = "Does not repeat"
-    case daily = "Every day"
-    case weekly = "Every week"
-    case monthly = "Every month"
-    case yearly = "Every year"
-    case custom = "Custom"
-}
-
-enum RepeatUnit: String, CaseIterable {
-    case days = "Days"
-    case weeks = "Weeks"
-    case months = "Months"
-    case years = "Years"
-}
-
 enum TaskSheetMode {
     case create
     case view(TimelineTaskModel)
@@ -35,6 +19,7 @@ struct TaskSheetView: View {
     var mode: TaskSheetMode
     var onSave: ((TimelineTaskModel) -> Void)?
     var onUpdate: ((TimelineTaskModel) -> Void)?
+    var onDelete: ((UUID) -> Void)?
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.contactRepository) private var contactRepository
@@ -45,7 +30,8 @@ struct TaskSheetView: View {
     @State private var taskName: String
     @State private var taskNote: String
     @State private var taskDate: Date
-    @State private var taskEndDate: Date
+    @State private var taskStartTime: Date
+    @State private var taskEndTime: Date
     @State private var repeatOption: RepeatOption
     @State private var isRecurring: Bool
     @State private var showingCustomRepeat = false
@@ -63,28 +49,31 @@ struct TaskSheetView: View {
 
     @State private var showDatePicker = false
     @State private var showTimePicker = false
+    @State private var showRecurringPicker = false
 
     @State private var isEditing: Bool
     @State private var editingTaskId: UUID?
-    @State private var editingAssigneeIDs: [UUID] = []
 
     private let maxNameLength = 30
 
     init(
         mode: TaskSheetMode = .create,
         onSave: ((TimelineTaskModel) -> Void)? = nil,
-        onUpdate: ((TimelineTaskModel) -> Void)? = nil
+        onUpdate: ((TimelineTaskModel) -> Void)? = nil,
+        onDelete: ((UUID) -> Void)? = nil
     ) {
         self.mode = mode
         self.onSave = onSave
         self.onUpdate = onUpdate
+        self.onDelete = onDelete
 
         switch mode {
         case .create:
             _taskName = State(initialValue: "")
             _taskNote = State(initialValue: "")
             _taskDate = State(initialValue: Date())
-            _taskEndDate = State(initialValue: Calendar.current.date(byAdding: .minute, value: 30, to: Date()) ?? Date())
+            _taskStartTime = State(initialValue: Date())
+            _taskEndTime = State(initialValue: Calendar.current.date(byAdding: .minute, value: 30, to: Date()) ?? Date())
             _repeatOption = State(initialValue: .none)
             _isRecurring = State(initialValue: false)
             _isEditing = State(initialValue: true)
@@ -93,7 +82,8 @@ struct TaskSheetView: View {
             _taskName = State(initialValue: task.title)
             _taskNote = State(initialValue: task.taskNote)
             _taskDate = State(initialValue: task.startDate)
-            _taskEndDate = State(initialValue: task.endDate)
+            _taskStartTime = State(initialValue: task.startDate)
+            _taskEndTime = State(initialValue: task.endDate)
             _repeatOption = State(initialValue: task.repeatOption)
             _isRecurring = State(initialValue: task.repeatOption != .none)
             _isEditing = State(initialValue: {
@@ -101,10 +91,10 @@ struct TaskSheetView: View {
                 return false
             }())
             _editingTaskId = State(initialValue: task.id)
-            _editingAssigneeIDs = State(initialValue: task.assigneeIDs)
-            _isAssignEnabled = State(initialValue: !task.assigneeIDs.isEmpty)
-            _selectedPrimaryID = State(initialValue: task.assigneeIDs.first)
-            _selectedBackupID = State(initialValue: task.assigneeIDs.count > 1 ? task.assigneeIDs[1] : nil)
+            _isAssignEnabled = State(initialValue: task.primaryAssigneeID != nil)
+            _selectedPrimaryID = State(initialValue: task.primaryAssigneeID)
+            _selectedBackupID = State(initialValue: task.backupAssigneeID)
+            _attachments = State(initialValue: task.attachments)
         }
     }
 
@@ -113,9 +103,18 @@ struct TaskSheetView: View {
         return false
     }
 
-    private var isViewMode: Bool {
-        if case .view = mode { return !isEditing }
-        return false
+    /// Combine date from taskDate with time from the time value
+    private func combinedDateTime(date: Date, time: Date) -> Date {
+        let cal = Calendar.current
+        let dateComponents = cal.dateComponents([.year, .month, .day], from: date)
+        let timeComponents = cal.dateComponents([.hour, .minute], from: time)
+        var combined = DateComponents()
+        combined.year = dateComponents.year
+        combined.month = dateComponents.month
+        combined.day = dateComponents.day
+        combined.hour = timeComponents.hour
+        combined.minute = timeComponents.minute
+        return cal.date(from: combined) ?? date
     }
 
     // MARK: - Body
@@ -128,13 +127,37 @@ struct TaskSheetView: View {
                     dateTimeSection
                     assignTaskSection
                     attachmentAndNotesSection
+
+                    // Delete button (edit mode only, not create)
+                    if isEditing && !isCreateMode {
+                        Button(role: .destructive) {
+                            if let id = editingTaskId {
+                                onDelete?(id)
+                            }
+                            dismiss()
+                        } label: {
+                            HStack {
+                                Image(systemName: "trash")
+                                Text("Delete Task")
+                            }
+                            .font(.body)
+                            .fontWeight(.medium)
+                            .foregroundStyle(.red)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                            .background(Color.red.opacity(0.08))
+                            .clipShape(RoundedRectangle(cornerRadius: 14))
+                        }
+                        .padding(.horizontal)
+                    }
+
                     Spacer(minLength: 40)
                 }
                 .padding(.top, 20)
             }
-            .background(Color(.systemBackground))
+            .background(Color(.secondarySystemBackground))
         }
-        .background(Color(.systemBackground))
+        .background(Color(.secondarySystemBackground))
         .sheet(isPresented: $showingCustomRepeat) {
             CustomRepeatView(repeatInterval: $repeatInterval, repeatUnit: $repeatUnit)
         }
@@ -153,22 +176,20 @@ struct TaskSheetView: View {
     // MARK: - Blue Header
     private var blueHeaderSection: some View {
         VStack(spacing: 14) {
-            // Drag indicator
             Capsule()
                 .fill(Color.white.opacity(0.4))
                 .frame(width: 36, height: 4)
                 .padding(.top, 10)
 
-            // Header row: X — Title — ✓
             HStack {
                 Button(action: {
                     if isEditing && !isCreateMode {
-                        // Cancel editing, revert to view mode
                         if case .view(let task) = mode {
                             taskName = task.title
                             taskNote = task.taskNote
                             taskDate = task.startDate
-                            taskEndDate = task.endDate
+                            taskStartTime = task.startDate
+                            taskEndTime = task.endDate
                             repeatOption = task.repeatOption
                             isRecurring = task.repeatOption != .none
                             isEditing = false
@@ -183,9 +204,7 @@ struct TaskSheetView: View {
                         .frame(width: 40, height: 40)
                         .background(brandBlue.opacity(0.8))
                         .clipShape(Circle())
-                        .overlay(
-                            Circle().stroke(Color.white.opacity(0.3), lineWidth: 1)
-                        )
+                        .overlay(Circle().stroke(Color.white.opacity(0.3), lineWidth: 1))
                 }
 
                 Spacer()
@@ -205,14 +224,11 @@ struct TaskSheetView: View {
                             .frame(width: 40, height: 40)
                             .background(brandBlue.opacity(0.8))
                             .clipShape(Circle())
-                            .overlay(
-                                Circle().stroke(Color.white.opacity(0.3), lineWidth: 1)
-                            )
+                            .overlay(Circle().stroke(Color.white.opacity(0.3), lineWidth: 1))
                     }
                     .disabled(taskName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     .opacity(taskName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.5 : 1)
                 } else {
-                    // Edit button for view mode
                     Button(action: { isEditing = true }) {
                         Image(systemName: "pencil")
                             .font(.body.weight(.semibold))
@@ -220,15 +236,12 @@ struct TaskSheetView: View {
                             .frame(width: 40, height: 40)
                             .background(brandBlue.opacity(0.8))
                             .clipShape(Circle())
-                            .overlay(
-                                Circle().stroke(Color.white.opacity(0.3), lineWidth: 1)
-                            )
+                            .overlay(Circle().stroke(Color.white.opacity(0.3), lineWidth: 1))
                     }
                 }
             }
             .padding(.horizontal, 16)
 
-            // Task name field — rounded rectangle, centered text, white border
             if isEditing {
                 VStack(spacing: 4) {
                     TextField("Task Name", text: $taskName)
@@ -250,7 +263,6 @@ struct TaskSheetView: View {
                                 .stroke(Color.white.opacity(0.3), lineWidth: 1)
                         )
 
-                    // Character counter below field, right-aligned
                     HStack {
                         Spacer()
                         Text("/\(maxNameLength)")
@@ -258,15 +270,10 @@ struct TaskSheetView: View {
                             .foregroundStyle(.white.opacity(0.5))
                     }
                 }
-                .padding(.horizontal, 16)
+                .padding(.horizontal, 32)
             }
-
-            // Blue slider indicator
-            Capsule()
-                .fill(Color.white.opacity(0.6))
-                .frame(width: 60, height: 6)
-                .padding(.bottom, 14)
         }
+        .padding(.bottom, 16)
         .background(brandBlue)
     }
 
@@ -280,7 +287,7 @@ struct TaskSheetView: View {
                 .padding(.bottom, 12)
 
             VStack(spacing: 0) {
-                // Date row
+                // Date row — full row tappable
                 Button(action: {
                     guard isEditing else { return }
                     withAnimation { showDatePicker.toggle(); showTimePicker = false }
@@ -292,17 +299,16 @@ struct TaskSheetView: View {
                         Text("Date")
                             .foregroundStyle(.primary)
                         Spacer()
-                        if !isEditing {
-                            Text(taskDate.formatted(date: .abbreviated, time: .omitted))
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                        }
+                        Text(taskDate.formatted(date: .abbreviated, time: .omitted))
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
                         Image(systemName: "chevron.right")
                             .font(.caption)
                             .foregroundStyle(.gray)
                     }
                     .padding(.horizontal, 16)
                     .padding(.vertical, 14)
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
 
@@ -312,7 +318,7 @@ struct TaskSheetView: View {
 
                 Divider().padding(.leading, 56)
 
-                // Time row
+                // Time row — full row tappable, shows range
                 Button(action: {
                     guard isEditing else { return }
                     withAnimation { showTimePicker.toggle(); showDatePicker = false }
@@ -324,17 +330,16 @@ struct TaskSheetView: View {
                         Text("Time")
                             .foregroundStyle(.primary)
                         Spacer()
-                        if !isEditing {
-                            Text(taskDate.formatted(date: .omitted, time: .shortened))
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                        }
+                        Text(timeRangeString)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
                         Image(systemName: "chevron.right")
                             .font(.caption)
                             .foregroundStyle(.gray)
                     }
                     .padding(.horizontal, 16)
                     .padding(.vertical, 14)
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
 
@@ -359,12 +364,69 @@ struct TaskSheetView: View {
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 14)
+
+                // Recurring frequency picker (when toggled on)
+                if isRecurring {
+                    Divider().padding(.leading, 56)
+
+                    Button(action: {
+                        guard isEditing else { return }
+                        withAnimation { showRecurringPicker.toggle() }
+                    }) {
+                        HStack {
+                            Image(systemName: "repeat")
+                                .foregroundStyle(brandBlue)
+                                .frame(width: 28)
+                            Text("Frequency")
+                                .foregroundStyle(.primary)
+                            Spacer()
+                            Text(repeatOption == .none ? "Daily" : repeatOption.rawValue)
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                            Image(systemName: "chevron.right")
+                                .font(.caption)
+                                .foregroundStyle(.gray)
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 14)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+
+                    if showRecurringPicker {
+                        VStack(spacing: 0) {
+                            ForEach([RepeatOption.daily, .weekly, .monthly, .yearly], id: \.self) { option in
+                                Button {
+                                    repeatOption = option
+                                    withAnimation { showRecurringPicker = false }
+                                } label: {
+                                    HStack {
+                                        Text(option.rawValue)
+                                            .foregroundStyle(.primary)
+                                        Spacer()
+                                        if repeatOption == option {
+                                            Image(systemName: "checkmark")
+                                                .foregroundStyle(brandBlue)
+                                        }
+                                    }
+                                    .padding(.horizontal, 16)
+                                    .padding(.vertical, 12)
+                                }
+                                .buttonStyle(.plain)
+
+                                if option != .yearly {
+                                    Divider().padding(.leading, 16)
+                                }
+                            }
+                        }
+                        .transition(.opacity.combined(with: .move(edge: .top)))
+                    }
+                }
             }
-            .background(Color(.secondarySystemBackground))
+            .background(Color(.systemBackground))
             .clipShape(RoundedRectangle(cornerRadius: 14))
             .padding(.horizontal)
 
-            // Reminder note
             Text("Assignees are reminded 30 minutes before and at task time.")
                 .font(.caption2)
                 .foregroundStyle(.gray)
@@ -372,7 +434,7 @@ struct TaskSheetView: View {
                 .padding(.horizontal, 20)
                 .padding(.top, 8)
 
-            // Assign Task row — connected to the toggled-on panel below
+            // Assign Task row — connected to the toggled-on panel
             VStack(spacing: 0) {
                 HStack {
                     Text("Assign Task")
@@ -391,11 +453,17 @@ struct TaskSheetView: View {
                     assignContactsContent
                 }
             }
-            .background(Color(.secondarySystemBackground))
+            .background(Color(.systemBackground))
             .clipShape(RoundedRectangle(cornerRadius: 14))
             .padding(.horizontal)
             .padding(.top, 12)
         }
+    }
+
+    private var timeRangeString: String {
+        let fmt = DateFormatter()
+        fmt.dateFormat = "h:mm a"
+        return "\(fmt.string(from: taskStartTime)) - \(fmt.string(from: taskEndTime))"
     }
 
     // MARK: - Inline Date Picker
@@ -436,15 +504,15 @@ struct TaskSheetView: View {
         .transition(.opacity.combined(with: .move(edge: .top)))
     }
 
-    // MARK: - Inline Time Picker
+    // MARK: - Inline Time Picker (Start + End range)
     private var inlineTimePicker: some View {
         VStack(spacing: 0) {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Time")
+                    Text("Time Range")
                         .font(.headline)
                         .foregroundStyle(.white)
-                    Text(taskDate.formatted(date: .omitted, time: .shortened))
+                    Text(timeRangeString)
                         .font(.caption)
                         .foregroundStyle(.white.opacity(0.7))
                 }
@@ -465,21 +533,46 @@ struct TaskSheetView: View {
             .clipShape(RoundedRectangle(cornerRadius: 12))
             .padding(.horizontal, 8)
 
-            DatePicker("Select Time", selection: $taskDate, displayedComponents: .hourAndMinute)
-                .datePickerStyle(.wheel)
-                .labelsHidden()
-                .padding(.horizontal, 8)
-                .padding(.bottom, 8)
+            VStack(spacing: 16) {
+                // Start time
+                HStack {
+                    Text("Start")
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                        .foregroundStyle(.primary)
+                    Spacer()
+                    DatePicker("", selection: $taskStartTime, displayedComponents: .hourAndMinute)
+                        .labelsHidden()
+                        .tint(brandBlue)
+                }
+                .padding(.horizontal, 16)
+
+                Divider().padding(.horizontal, 16)
+
+                // End time
+                HStack {
+                    Text("End")
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                        .foregroundStyle(.primary)
+                    Spacer()
+                    DatePicker("", selection: $taskEndTime, displayedComponents: .hourAndMinute)
+                        .labelsHidden()
+                        .tint(brandBlue)
+                }
+                .padding(.horizontal, 16)
+            }
+            .padding(.vertical, 16)
         }
         .transition(.opacity.combined(with: .move(edge: .top)))
     }
 
-    // MARK: - Assign Task Section (now removed; toggle is in dateTimeSection)
+    // MARK: - Assign Task Section
     private var assignTaskSection: some View {
         EmptyView()
     }
 
-    // MARK: - Assign Contacts Content (inside the card)
+    // MARK: - Assign Contacts Content
     private var assignContactsContent: some View {
         VStack(alignment: .leading, spacing: 16) {
             if allContacts.isEmpty {
@@ -490,7 +583,6 @@ struct TaskSheetView: View {
                 }
                 .padding(.vertical, 20)
             } else {
-                // Primary section
                 VStack(alignment: .leading, spacing: 10) {
                     HStack {
                         Text("Primary")
@@ -525,7 +617,6 @@ struct TaskSheetView: View {
 
                 Divider()
 
-                // Backup section
                 VStack(alignment: .leading, spacing: 10) {
                     Text("Backup")
                         .font(.subheadline)
@@ -585,12 +676,11 @@ struct TaskSheetView: View {
                 .fontWeight(.bold)
                 .padding(.horizontal)
 
-            // Notes field
             if isEditing {
                 TextField("Notes here...", text: $taskNote, axis: .vertical)
                     .lineLimit(3...5)
                     .padding(14)
-                    .background(Color(.secondarySystemBackground))
+                    .background(Color(.systemBackground))
                     .clipShape(RoundedRectangle(cornerRadius: 14))
                     .padding(.horizontal)
             } else {
@@ -599,13 +689,12 @@ struct TaskSheetView: View {
                     .foregroundStyle(taskNote.isEmpty ? .secondary : .primary)
                     .padding(14)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Color(.secondarySystemBackground))
+                    .background(Color(.systemBackground))
                     .clipShape(RoundedRectangle(cornerRadius: 14))
                     .padding(.horizontal)
             }
 
             if isEditing {
-                // Attachment buttons
                 VStack(spacing: 0) {
                     Button(action: { isFilePickerPresented = true }) {
                         HStack(spacing: 10) {
@@ -617,6 +706,7 @@ struct TaskSheetView: View {
                         }
                         .padding(.horizontal, 16)
                         .padding(.vertical, 14)
+                        .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
 
@@ -637,33 +727,31 @@ struct TaskSheetView: View {
                         Task { await handlePhotoSelection(newItems) }
                     }
                 }
-                .background(Color(.secondarySystemBackground))
+                .background(Color(.systemBackground))
                 .clipShape(RoundedRectangle(cornerRadius: 14))
                 .padding(.horizontal)
             }
 
-            // Attachment list with swipe-to-delete
             if !attachments.isEmpty {
-                VStack(spacing: 0) {
-                    ForEach(Array(attachments.enumerated()), id: \.element.id) { index, attachment in
+                List {
+                    ForEach(attachments) { attachment in
                         attachmentRow(attachment)
-                            .gesture(
-                                DragGesture(minimumDistance: 50)
-                                    .onEnded { value in
-                                        if value.translation.width < -50 && isEditing {
-                                            withAnimation {
-                                                attachments.removeAll { $0.id == attachment.id }
-                                            }
-                                        }
-                                    }
-                            )
-
-                        if index < attachments.count - 1 {
-                            Divider().padding(.leading, 60)
+                            .listRowInsets(EdgeInsets())
+                            .listRowSeparator(.hidden)
+                            .listRowBackground(Color(.systemBackground))
+                    }
+                    .onDelete { indexSet in
+                        if isEditing {
+                            withAnimation {
+                                attachments.remove(atOffsets: indexSet)
+                            }
                         }
                     }
                 }
-                .background(Color(.secondarySystemBackground))
+                .listStyle(.plain)
+                .frame(height: CGFloat(attachments.count) * 60)
+                .scrollDisabled(true)
+                .background(Color(.systemBackground))
                 .clipShape(RoundedRectangle(cornerRadius: 14))
                 .padding(.horizontal)
             }
@@ -749,37 +837,31 @@ struct TaskSheetView: View {
         } catch {
             allContacts = []
         }
-        if editingAssigneeIDs.count > 0 {
-            selectedPrimaryID = editingAssigneeIDs[0]
-        }
-        if editingAssigneeIDs.count > 1 {
-            selectedBackupID = editingAssigneeIDs[1]
-        }
     }
 
     // MARK: - Save
     private func saveTask() {
-        var assigneeIDs: [UUID] = []
-        if isAssignEnabled {
-            if let primary = selectedPrimaryID { assigneeIDs.append(primary) }
-            if let backup = selectedBackupID { assigneeIDs.append(backup) }
-        }
         let primaryContact = selectedPrimaryID.flatMap { id in allContacts.first(where: { $0.id == id }) }
         let initials = primaryContact?.initials
 
         let effectiveRepeat: RepeatOption = isRecurring ? (repeatOption == .none ? .daily : repeatOption) : .none
 
+        let startDate = combinedDateTime(date: taskDate, time: taskStartTime)
+        let endDate = combinedDateTime(date: taskDate, time: taskEndTime)
+
         let timelineModel = TimelineTaskModel(
             id: editingTaskId ?? UUID(),
-            startDate: taskDate,
-            endDate: taskEndDate,
+            startDate: startDate,
+            endDate: endDate,
             title: taskName.trimmingCharacters(in: .whitespacesAndNewlines),
             initials: initials,
             hasRepeatIcon: effectiveRepeat != .none,
-            state: assigneeIDs.isEmpty ? .pending : .assigned,
+            state: (isAssignEnabled && selectedPrimaryID != nil) ? .assigned : .pending,
             taskNote: taskNote.trimmingCharacters(in: .whitespacesAndNewlines),
             repeatOption: effectiveRepeat,
-            assigneeIDs: assigneeIDs
+            primaryAssigneeID: isAssignEnabled ? selectedPrimaryID : nil,
+            backupAssigneeID: isAssignEnabled ? selectedBackupID : nil,
+            attachments: attachments
         )
 
         if isCreateMode {
