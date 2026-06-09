@@ -44,7 +44,6 @@ struct ContentView: View {
     @State private var store: TimelineStore?
     @State private var reloadToken = UUID()
 
-    // Task completion popup
     @State private var showCompletionPopup = false
     @State private var completingTask: TimelineTaskModel?
 
@@ -139,19 +138,16 @@ struct ContentView: View {
                 )
             }
 
-            // Task Completion Popup overlay
             if showCompletionPopup, let task = completingTask {
                 Color.black.opacity(0.4)
                     .ignoresSafeArea()
                     .onTapGesture {
-                        // Cancel completion
                         cancelCompletion(task)
                     }
 
                 TaskCompletionPopupView(
                     taskTitle: task.title,
                     onPost: { notes, images in
-                        // Post the log and finalize completion
                         finalizeCompletion(task, notes: notes, images: images)
                     },
                     onCancel: {
@@ -194,23 +190,19 @@ struct ContentView: View {
             }
             tasks = store?.tasks ?? []
         } catch {
-            // Milestone 2: surface error to user
+            
         }
     }
 
-    /// Called when a task's status changes (accept, decline, toggle complete)
     private func handleTaskStatusChange(_ timelineModel: TimelineTaskModel) {
-        // If task was just completed, show the completion popup
         if timelineModel.isCompleted {
             completingTask = timelineModel
             showCompletionPopup = true
         } else {
-            // Just persist the status change
             persistTaskStatus(timelineModel)
         }
     }
 
-    /// Called when a task is deleted via swipe
     private func handleTaskDeleted(_ taskID: UUID) {
         Task {
             try? await store?.deleteTask(id: taskID)
@@ -225,20 +217,15 @@ struct ContentView: View {
         }
     }
 
-    /// Finalize task completion: post log and persist
     private func finalizeCompletion(_ task: TimelineTaskModel, notes: String, images: [UIImage]) {
         showCompletionPopup = false
         completingTask = nil
-        // Persist the completed status
         persistTaskStatus(task)
-        // TODO: Create a Log entry and post to MainLogView
     }
 
-    /// Cancel task completion: revert the state
     private func cancelCompletion(_ task: TimelineTaskModel) {
         showCompletionPopup = false
         completingTask = nil
-        // Revert the task to its previous state
         if let index = tasks.firstIndex(where: { $0.id == task.id }) {
             tasks[index].state = tasks[index].previousState ?? .assigned
             tasks[index].previousState = nil

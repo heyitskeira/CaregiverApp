@@ -43,7 +43,6 @@ final class TimelineStore {
         for assignment in assignments {
             try await taskRepository.addAssignment(assignment)
         }
-        // Auto-assign to primary if no assignments
         if assignments.isEmpty {
             let autoAssignment = TaskAssignment(
                 taskID: careTask.id,
@@ -58,7 +57,6 @@ final class TimelineStore {
     func update(_ careTask: CareTask, assignments: [TaskAssignment]? = nil) async throws {
         try await taskRepository.updateTask(careTask)
         if let assignments {
-            // Clear old assignments and add new ones
             let old = try await taskRepository.fetchAssignments(taskID: careTask.id)
             for a in old {
                 try await taskRepository.removeAssignment(taskID: a.taskID, assigneeID: a.assigneeID)

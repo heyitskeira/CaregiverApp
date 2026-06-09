@@ -2,7 +2,6 @@ import Foundation
 import SwiftUI
 
 extension CareTask {
-    /// Convert a CareTask + its assignments into a TimelineTaskModel for display.
     func timelinePresentation(
         assignments: [TaskAssignment],
         contactsByID: [UUID: CareContact]
@@ -42,7 +41,6 @@ extension CareTask {
         }
     }
 
-    /// Convert a TimelineTaskModel back to a CareTask for persistence.
     static func from(
         timelineModel: TimelineTaskModel,
         careTeamID: UUID = SeedData.careTeamID,
@@ -70,7 +68,6 @@ extension CareTask {
         )
     }
 
-    /// Build TaskAssignment records from a TimelineTaskModel.
     static func assignments(
         from timelineModel: TimelineTaskModel,
         assignedByID: UUID = SeedData.primaryCaregiverID
@@ -96,7 +93,6 @@ extension CareTask {
 
 // MARK: - RepeatOption ↔ TaskRecurrenceFrequency conversion
 
-/// UI-facing repeat option used by TaskSheetView
 enum RepeatOption: String, CaseIterable {
     case none = "Does not repeat"
     case daily = "Every day"

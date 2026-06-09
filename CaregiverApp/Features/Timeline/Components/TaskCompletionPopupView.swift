@@ -23,7 +23,6 @@ struct TaskCompletionPopupView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
-            // Header
             VStack(alignment: .leading, spacing: 8) {
                 Text("Task Completed!")
                     .font(.title3)
@@ -37,14 +36,13 @@ struct TaskCompletionPopupView: View {
             }
             .padding(.top, 8)
 
-            // Notes Field
+            
             TextField("Add Notes", text: $notes, axis: .vertical)
                 .lineLimit(3...5)
                 .padding(16)
                 .background(Color(.secondarySystemBackground))
                 .clipShape(RoundedRectangle(cornerRadius: 16))
 
-            // Attachment buttons (same format as TaskSheetView)
             VStack(spacing: 0) {
                 Button(action: { isFilePickerPresented = true }) {
                     HStack(spacing: 10) {
@@ -92,7 +90,6 @@ struct TaskCompletionPopupView: View {
             .background(Color(.secondarySystemBackground))
             .clipShape(RoundedRectangle(cornerRadius: 16))
 
-            // Attached images preview
             if !attachedImages.isEmpty {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
@@ -118,7 +115,6 @@ struct TaskCompletionPopupView: View {
                 }
             }
 
-            // Buttons
             HStack(spacing: 12) {
                 Button(action: { onCancel?() }) {
                     Text("Cancel")
