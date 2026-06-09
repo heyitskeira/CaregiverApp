@@ -3,32 +3,16 @@ import SwiftUI
 struct InboxView: View {
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.taskRepository) private var taskRepository
 
-    @State private var tasks: [CareTask] = [
-        CareTask(
-            title: "Poopie Pants",
-            scheduledAt: .now,
-            durationMinutes: 120,
-            careTeamID: UUID(),
-            patientID: UUID(),
-            createdByID: UUID()
-        ),
-        CareTask(
-            title: "Puke Nuke",
-            scheduledAt: .now.addingTimeInterval(3600),
-            durationMinutes: 30,
-            careTeamID: UUID(),
-            patientID: UUID(),
-            createdByID: UUID()
-        )
-    ]
-    
+    @State private var requests: [TaskRequest] = []
+    @State private var tasksByID: [UUID: CareTask] = [:]
+    @State private var isLoading = true
+
     private var displayDate: String {
-
         if Calendar.current.isDateInToday(Date()) {
             return "Today"
         }
-
         return Date().formatted(
             .dateTime
                 .day()
@@ -38,7 +22,6 @@ struct InboxView: View {
     }
 
     var body: some View {
-
         VStack(spacing: 0) {
 
             // Header
@@ -75,18 +58,13 @@ struct InboxView: View {
             .padding(.vertical, 10)
 
             HStack {
-
-                Text("\(tasks.count) task request\(tasks.count == 1 ? "" : "s")")
+                Text("\(requests.count) task request\(requests.count == 1 ? "" : "s")")
                     .fontWeight(.semibold)
 
                 Spacer()
 
                 Button("Accept All") {
-
-                    for task in tasks {
-                        print("Accepted \(task.title)")
-                    }
-
+                    acceptAll()
                 }
                 .font(.subheadline)
                 .fontWeight(.medium)
@@ -107,35 +85,100 @@ struct InboxView: View {
             Divider()
                 .padding(.bottom, 14)
 
-            ScrollView {
+            if isLoading {
+                Spacer()
+                ProgressView()
+                Spacer()
+            } else if requests.isEmpty {
+                Spacer()
+                VStack(spacing: 8) {
+                    Image(systemName: "tray")
+                        .font(.system(size: 40))
+                        .foregroundStyle(.gray.opacity(0.4))
+                    Text("No pending requests")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+            } else {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 16) {
+                        Text(displayDate)
+                            .font(.body)
+                            .fontWeight(.bold)
+                            .padding(.horizontal, 16)
 
-                VStack(alignment: .leading, spacing: 16) {
-
-                    Text(displayDate)
-                        .font(.body)
-                        .fontWeight(.bold)
-                        .padding(.horizontal, 16)
-
-                    ForEach(tasks) { task in
-
-                        InboxRow(
-                            task: task,
-                            onAccept: {
-
-                                print("Accepted \(task.title)")
-
-                            },
-                            onDecline: {
-
-                                print("Declined \(task.title)")
-
+                        ForEach(requests) { request in
+                            if let task = tasksByID[request.taskID] {
+                                InboxRow(
+                                    task: task,
+                                    onAccept: {
+                                        acceptRequest(request)
+                                    },
+                                    onDecline: {
+                                        declineRequest(request)
+                                    }
+                                )
                             }
-                        )
+                        }
                     }
                 }
             }
         }
         .navigationBarBackButtonHidden()
+        .task {
+            await loadRequests()
+        }
+    }
+
+    private func loadRequests() async {
+        isLoading = true
+        defer { isLoading = false }
+
+        do {
+            requests = try await taskRepository.fetchAllPendingRequests()
+            let allTasks = try await taskRepository.fetchAllTasks()
+            tasksByID = Dictionary(uniqueKeysWithValues: allTasks.map { ($0.id, $0) })
+        } catch {
+            requests = []
+        }
+    }
+
+    private func acceptRequest(_ request: TaskRequest) {
+        Task {
+            try? await taskRepository.updateRequestStatus(id: request.id, status: .accepted)
+            // Add an assignment for the requester
+            let assignment = TaskAssignment(
+                taskID: request.taskID,
+                assigneeID: request.requesterID,
+                assignedByID: request.requesterID
+            )
+            try? await taskRepository.addAssignment(assignment)
+            // Update task status to assigned
+            if var task = tasksByID[request.taskID] {
+                task.status = .assigned
+                try? await taskRepository.updateTask(task)
+            }
+            // Remove from local list
+            withAnimation {
+                requests.removeAll { $0.id == request.id }
+            }
+        }
+    }
+
+    private func declineRequest(_ request: TaskRequest) {
+        Task {
+            try? await taskRepository.updateRequestStatus(id: request.id, status: .declined)
+            withAnimation {
+                requests.removeAll { $0.id == request.id }
+            }
+        }
+    }
+
+    private func acceptAll() {
+        for request in requests {
+            acceptRequest(request)
+        }
     }
 }
 
@@ -146,33 +189,25 @@ struct InboxRow: View {
     let onAccept: () -> Void
     let onDecline: () -> Void
 
+    private var endTime: Date {
+        task.scheduledAt.addingTimeInterval(Double(task.durationMinutes * 60))
+    }
+
     private var timeText: String {
-
-        let endTime = task.scheduledAt.addingTimeInterval(
-            Double(task.durationMinutes * 60)
-        )
-
-        return "\(task.scheduledAt.formatted(date: .omitted, time: .shortened)) - \(endTime.formatted(date: .omitted, time: .shortened))"
+        "\(task.scheduledAt.formatted(date: .omitted, time: .shortened)) - \(endTime.formatted(date: .omitted, time: .shortened))"
     }
 
     private var durationText: String {
-
         if task.durationMinutes >= 60 {
-
             let hours = Double(task.durationMinutes) / 60
-
             return "\(hours.formatted()) hr"
         }
-
         return "\(task.durationMinutes) min"
     }
 
     var body: some View {
-
         VStack(spacing: 0) {
-
             HStack(spacing: 8) {
-
                 Image(systemName: "hand.wave")
                     .font(.title2)
                     .foregroundColor(.white)
@@ -181,13 +216,11 @@ struct InboxRow: View {
                     .clipShape(Circle())
 
                 VStack(alignment: .leading, spacing: 4) {
-
                     Text(task.title)
                         .font(.headline)
                         .fontWeight(.semibold)
 
                     HStack(spacing: 4) {
-
                         Image(systemName: "clock")
                             .font(.caption)
                             .foregroundColor(.gray)
@@ -200,40 +233,30 @@ struct InboxRow: View {
 
                 Spacer()
 
-                HStack(spacing: 6) {
-
-                    Button {
-                        onDecline()
-                    } label: {
-                        Text("Decline")
-                            .font(.subheadline)
-                            .fontWeight(.medium)
+                HStack(spacing: 8) {
+                    // Gray X (decline)
+                    Button(action: onDecline) {
+                        Image(systemName: "xmark")
+                            .font(.body.weight(.medium))
+                            .foregroundColor(.gray)
+                            .frame(width: 32, height: 32)
+                            .overlay(
+                                Circle()
+                                    .stroke(Color.gray.opacity(0.4), lineWidth: 1.5)
+                            )
                     }
-                    .frame(width: 65)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 8)
-                    .foregroundStyle(.tint)
-                    .background(
-                        RoundedRectangle(
-                            cornerRadius: 20,
-                            style: .continuous
-                        )
-                        .stroke(.tint, lineWidth: 2)
-                    )
 
-                    Button {
-                        onAccept()
-                    } label: {
-                        Text("Accept")
-                            .font(.subheadline)
-                            .fontWeight(.medium)
-                            .foregroundColor(.white)
+                    // Blue checkmark (accept)
+                    Button(action: onAccept) {
+                        Image(systemName: "checkmark")
+                            .font(.body.weight(.medium))
+                            .foregroundColor(Color(hex: 0x2051B9))
+                            .frame(width: 32, height: 32)
+                            .overlay(
+                                Circle()
+                                    .stroke(Color(hex: 0x2051B9), lineWidth: 1.5)
+                            )
                     }
-                    .frame(width: 65)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 8)
-                    .background(.accent)
-                    .clipShape(Capsule())
                 }
             }
             .padding(.horizontal)
@@ -246,4 +269,5 @@ struct InboxRow: View {
 
 #Preview {
     InboxView()
+        .environment(\.taskRepository, AppDependencies.live.taskRepository)
 }

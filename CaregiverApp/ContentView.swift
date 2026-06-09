@@ -44,88 +44,120 @@ struct ContentView: View {
     @State private var store: TimelineStore?
     @State private var reloadToken = UUID()
 
+    @State private var showCompletionPopup = false
+    @State private var completingTask: TimelineTaskModel?
+
     var body: some View {
-        TabView(selection: $selectedTab) {
-            Tab(
-                AppTab.timeline.title,
-                systemImage: AppTab.timeline.icon,
-                value: .timeline
-            ) {
-                NavigationStack {
-                    TimelineView(
-                        tasks: $tasks,
-                        selectedDate: $selectedDate,
-                        onTaskTapped: openTaskDetail,
-                        onTaskStatusChanged: persistTaskStatus
-                    )
-                }
-            }
-
-            Tab(
-                AppTab.logPage.title,
-                systemImage: AppTab.logPage.icon,
-                value: .logPage
-            ) {
-                NavigationStack {
-                    MainLogView()
-                }
-            }
-
-            Tab(
-                AppTab.profile.title,
-                systemImage: AppTab.profile.icon,
-                value: .profile
-            ) {
-                ProfileRootView()
-            }
-
-            if authService.currentRole.canCreateTask {
+        ZStack {
+            TabView(selection: $selectedTab) {
                 Tab(
-                    AppTab.addTask.title,
-                    systemImage: AppTab.addTask.icon,
-                    value: .addTask,
-                    role: .search
-                ) {}
-            }
-        }
-        .onChange(of: selectedTab) { oldValue, newValue in
-            if newValue == .addTask {
-                selectedTab = oldValue
-                taskSheetMode = .create
-                showTaskSheet = true
-            }
-        }
-        .task(id: reloadToken) {
-            await reloadTasks()
-        }
-        .sheet(
-            isPresented: $showTaskSheet,
-            onDismiss: {
-                reloadToken = UUID()
-            }
-        ) {
-            TaskSheetView(mode: .create) { timelineModel in
-                Task { await persistTimelineModel(timelineModel) }
-            }
-        }
-        .sheet(
-            isPresented: $showDetailSheet,
-            onDismiss: {
-                reloadToken = UUID()
-            }
-        ) {
-            TaskSheetView(
-                mode: taskSheetMode,
-                onUpdate: { timelineModel in
-                    Task {
-                        await persistTimelineModel(
-                            timelineModel,
-                            updating: true
+                    AppTab.timeline.title,
+                    systemImage: AppTab.timeline.icon,
+                    value: .timeline
+                ) {
+                    NavigationStack {
+                        TimelineView(
+                            tasks: $tasks,
+                            selectedDate: $selectedDate,
+                            onTaskTapped: openTaskDetail,
+                            onTaskStatusChanged: handleTaskStatusChange,
+                            onTaskDeleted: handleTaskDeleted
                         )
                     }
                 }
-            )
+
+                Tab(
+                    AppTab.logPage.title,
+                    systemImage: AppTab.logPage.icon,
+                    value: .logPage
+                ) {
+                    NavigationStack {
+                        MainLogView()
+                    }
+                }
+
+                Tab(
+                    AppTab.profile.title,
+                    systemImage: AppTab.profile.icon,
+                    value: .profile
+                ) {
+                    ProfileRootView()
+                }
+
+                if authService.currentRole.canCreateTask {
+                    Tab(
+                        AppTab.addTask.title,
+                        systemImage: AppTab.addTask.icon,
+                        value: .addTask,
+                        role: .search
+                    ) {}
+                }
+            }
+            .onChange(of: selectedTab) { oldValue, newValue in
+                if newValue == .addTask {
+                    selectedTab = oldValue
+                    taskSheetMode = .create
+                    showTaskSheet = true
+                }
+            }
+            .task(id: reloadToken) {
+                await reloadTasks()
+            }
+            .sheet(
+                isPresented: $showTaskSheet,
+                onDismiss: {
+                    reloadToken = UUID()
+                }
+            ) {
+                TaskSheetView(mode: .create) { timelineModel in
+                    Task { await persistTimelineModel(timelineModel) }
+                }
+            }
+            .sheet(
+                isPresented: $showDetailSheet,
+                onDismiss: {
+                    reloadToken = UUID()
+                }
+            ) {
+                TaskSheetView(
+                    mode: taskSheetMode,
+                    onUpdate: { timelineModel in
+                        Task {
+                            await persistTimelineModel(
+                                timelineModel,
+                                updating: true
+                            )
+                        }
+                    },
+                    onDelete: { taskID in
+                        Task {
+                            try? await store?.deleteTask(id: taskID)
+                            await reloadTasks()
+                        }
+                    }
+                )
+            }
+
+            if showCompletionPopup, let task = completingTask {
+                Color.black.opacity(0.4)
+                    .ignoresSafeArea()
+                    .onTapGesture {
+                        cancelCompletion(task)
+                    }
+
+                TaskCompletionPopupView(
+                    taskTitle: task.title,
+                    onPost: { notes, images in
+                        finalizeCompletion(task, notes: notes, images: images)
+                    },
+                    onCancel: {
+                        cancelCompletion(task)
+                    }
+                )
+                .transition(.scale.combined(with: .opacity))
+            }
         }
+        .animation(.easeInOut(duration: 0.25), value: showCompletionPopup)
     }
 
     private func openTaskDetail(_ task: TimelineTaskModel) {
@@ -149,15 +181,32 @@ struct ContentView: View {
         updating: Bool = false
     ) async {
         let careTask = CareTask.from(timelineModel: timelineModel)
+        let assignments = CareTask.assignments(from: timelineModel)
         do {
             if updating {
-                try await taskRepository.updateTask(careTask)
+                try await store?.update(careTask, assignments: assignments)
             } else {
-                try await taskRepository.saveTask(careTask)
+                try await store?.save(careTask, assignments: assignments)
             }
-            await reloadTasks()
+            tasks = store?.tasks ?? []
         } catch {
-            // Milestone 2: surface error to user
+            
+        }
+    }
+
+    private func handleTaskStatusChange(_ timelineModel: TimelineTaskModel) {
+        if timelineModel.isCompleted {
+            completingTask = timelineModel
+            showCompletionPopup = true
+        } else {
+            persistTaskStatus(timelineModel)
+        }
+    }
+
+    private func handleTaskDeleted(_ taskID: UUID) {
+        Task {
+            try? await store?.deleteTask(id: taskID)
+            await reloadTasks()
         }
     }
 
@@ -165,6 +214,21 @@ struct ContentView: View {
         Task {
             let careTask = CareTask.from(timelineModel: timelineModel)
             try? await taskRepository.updateTask(careTask)
+        }
+    }
+
+    private func finalizeCompletion(_ task: TimelineTaskModel, notes: String, images: [UIImage]) {
+        showCompletionPopup = false
+        completingTask = nil
+        persistTaskStatus(task)
+    }
+
+    private func cancelCompletion(_ task: TimelineTaskModel) {
+        showCompletionPopup = false
+        completingTask = nil
+        if let index = tasks.firstIndex(where: { $0.id == task.id }) {
+            tasks[index].state = tasks[index].previousState ?? .assigned
+            tasks[index].previousState = nil
         }
     }
 }

@@ -6,8 +6,7 @@ enum TaskRequestStatus: String, Codable, Sendable, CaseIterable {
     case declined
 }
 
-/// A care-group member volunteering to take an unassigned task (Inbox flow).
-struct TaskRequest: Identifiable, Hashable, Codable, Sendable {
+struct TaskRequest: Identifiable, Hashable, Codable, Sendable { // / A care-group member volunteering to take an unassigned task (Inbox flow).
     let id: UUID
     let taskID: UUID
     let requesterID: UUID

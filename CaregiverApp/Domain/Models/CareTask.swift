@@ -8,9 +8,10 @@ struct CareTask: Identifiable, Hashable, Codable, Sendable {
     var instructions: String
     var careTeamID: UUID
     var patientID: UUID
-    var assigneeIDs: [UUID]
     var status: TaskStatus
-    var recurrence: TaskRecurrence
+    var recurrenceFrequency: TaskRecurrenceFrequency
+    var recurrenceInterval: Int
+    var recurrenceUnit: TaskRecurrenceUnit?
     var createdByID: UUID
     var createdAt: Date
     var updatedAt: Date
@@ -23,9 +24,10 @@ struct CareTask: Identifiable, Hashable, Codable, Sendable {
         instructions: String = "",
         careTeamID: UUID,
         patientID: UUID,
-        assigneeIDs: [UUID] = [],
-        status: TaskStatus? = nil,
-        recurrence: TaskRecurrence = .none,
+        status: TaskStatus = .unassigned,
+        recurrenceFrequency: TaskRecurrenceFrequency = .none,
+        recurrenceInterval: Int = 1,
+        recurrenceUnit: TaskRecurrenceUnit? = nil,
         createdByID: UUID,
         createdAt: Date = .now,
         updatedAt: Date = .now
@@ -37,19 +39,16 @@ struct CareTask: Identifiable, Hashable, Codable, Sendable {
         self.instructions = instructions
         self.careTeamID = careTeamID
         self.patientID = patientID
-        self.assigneeIDs = assigneeIDs
-        self.recurrence = recurrence
+        self.status = status
+        self.recurrenceFrequency = recurrenceFrequency
+        self.recurrenceInterval = max(1, recurrenceInterval)
+        self.recurrenceUnit = recurrenceUnit
         self.createdByID = createdByID
         self.createdAt = createdAt
         self.updatedAt = updatedAt
-        self.status = status ?? Self.derivedStatus(assigneeIDs: assigneeIDs)
     }
 
-    static func derivedStatus(assigneeIDs: [UUID]) -> TaskStatus {
-        assigneeIDs.isEmpty ? .unassigned : .assigned
-    }
-
-    func isAssigned(to memberID: UUID) -> Bool {
-        assigneeIDs.contains(memberID)
+    var hasRecurrence: Bool {
+        recurrenceFrequency != .none
     }
 }
