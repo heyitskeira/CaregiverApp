@@ -351,6 +351,7 @@ struct TimelineView: View {
     private func declineTask(_ task: TimelineTaskModel) {
         guard let index = tasks.firstIndex(where: { $0.id == task.id }) else { return }
         tasks[index].isRequested = false
+        tasks[index].state = .assigned
         onTaskStatusChanged?(tasks[index])
     }
 

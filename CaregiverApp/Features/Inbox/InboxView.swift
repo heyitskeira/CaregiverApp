@@ -195,6 +195,13 @@ struct InboxView: View {
     private func declineRequest(_ request: TaskRequest) {
         Task {
             try? await taskRepository.updateRequestStatus(id: request.id, status: .declined)
+            
+            // Turn task blue (.assigned) so it shows up in All Tasks as assigned
+            if var task = tasksByID[request.taskID] {
+                task.status = .assigned
+                try? await taskRepository.updateTask(task)
+            }
+            
             withAnimation {
                 requests.removeAll { $0.id == request.id }
             }

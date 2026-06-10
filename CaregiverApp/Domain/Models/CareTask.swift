@@ -1,7 +1,7 @@
 import Foundation
 
 struct CareTask: Identifiable, Hashable, Codable, Sendable {
-    let id: UUID
+    var id: UUID
     var title: String
     var scheduledAt: Date
     var durationMinutes: Int
@@ -15,6 +15,7 @@ struct CareTask: Identifiable, Hashable, Codable, Sendable {
     var createdByID: UUID
     var createdAt: Date
     var updatedAt: Date
+    var attachments: [TaskAttachment] = []
 
     init(
         id: UUID = UUID(),
@@ -30,7 +31,8 @@ struct CareTask: Identifiable, Hashable, Codable, Sendable {
         recurrenceUnit: TaskRecurrenceUnit? = nil,
         createdByID: UUID,
         createdAt: Date = .now,
-        updatedAt: Date = .now
+        updatedAt: Date = .now,
+        attachments: [TaskAttachment] = []
     ) {
         self.id = id
         self.title = title
@@ -46,6 +48,7 @@ struct CareTask: Identifiable, Hashable, Codable, Sendable {
         self.createdByID = createdByID
         self.createdAt = createdAt
         self.updatedAt = updatedAt
+        self.attachments = attachments
     }
 
     var hasRecurrence: Bool {

@@ -8,6 +8,9 @@ final class TimelineStore {
 
     private(set) var tasks: [TimelineTaskModel] = []
     private(set) var isLoading = false
+    
+    // Temporary local cache for attachments until Supabase schema supports them
+    private var attachmentsCache: [UUID: [TaskAttachment]] = [:]
 
     init(taskRepository: any TaskRepository, contactRepository: any ContactRepository) {
         self.taskRepository = taskRepository
@@ -29,10 +32,14 @@ final class TimelineStore {
             var models: [TimelineTaskModel] = []
             for task in careTasks {
                 let assignments = try await taskRepository.fetchAssignments(taskID: task.id)
-                let model = task.timelinePresentation(
+                var model = task.timelinePresentation(
                     assignments: assignments,
                     contactsByID: contactsByID
                 )
+                if let cached = attachmentsCache[task.id] {
+                    model.attachments = cached
+                    model.showDocumentIcon = !cached.isEmpty
+                }
                 models.append(model)
             }
             tasks = models
@@ -42,6 +49,7 @@ final class TimelineStore {
     }
 
     func save(_ careTask: CareTask, assignments: [TaskAssignment] = []) async throws {
+        attachmentsCache[careTask.id] = careTask.attachments
         try await taskRepository.saveTask(careTask)
         for assignment in assignments {
             try await taskRepository.addAssignment(assignment)
@@ -54,10 +62,63 @@ final class TimelineStore {
             )
             try await taskRepository.addAssignment(autoAssignment)
         }
+        
+        // Expand recurrence if needed (only on creation)
+        if careTask.recurrenceFrequency != .none {
+            try await expandRecurrence(for: careTask, assignments: assignments.isEmpty ? [
+                TaskAssignment(taskID: careTask.id, assigneeID: SeedData.primaryCaregiverID, assignedByID: SeedData.primaryCaregiverID)
+            ] : assignments)
+        }
+
         await load()
     }
 
+    private func expandRecurrence(for baseTask: CareTask, assignments: [TaskAssignment]) async throws {
+        let calendar = Calendar.current
+        var limit = 0
+        var component: Calendar.Component = .day
+
+        switch baseTask.recurrenceFrequency {
+        case .daily:
+            limit = 30 // Create next 30 days
+            component = .day
+        case .weekly:
+            limit = 12 // Next 12 weeks
+            component = .weekOfYear
+        case .monthly:
+            limit = 12 // Next 12 months
+            component = .month
+        case .yearly:
+            limit = 5 // Next 5 years
+            component = .year
+        default: return
+        }
+
+        for i in 1...limit {
+            guard let nextDate = calendar.date(byAdding: component, value: i, to: baseTask.scheduledAt) else { continue }
+            
+            var nextTask = baseTask
+            nextTask.id = UUID()
+            nextTask.scheduledAt = nextDate
+            // Note: we don't clear recurrenceFrequency so the UI still shows the repeat icon
+            
+            attachmentsCache[nextTask.id] = baseTask.attachments
+            try await taskRepository.saveTask(nextTask)
+            
+            for a in assignments {
+                let nextAssignment = TaskAssignment(
+                    id: UUID(),
+                    taskID: nextTask.id,
+                    assigneeID: a.assigneeID,
+                    assignedByID: a.assignedByID
+                )
+                try await taskRepository.addAssignment(nextAssignment)
+            }
+        }
+    }
+
     func update(_ careTask: CareTask, assignments: [TaskAssignment]? = nil) async throws {
+        attachmentsCache[careTask.id] = careTask.attachments
         try await taskRepository.updateTask(careTask)
         if let assignments {
             let old = try await taskRepository.fetchAssignments(taskID: careTask.id)

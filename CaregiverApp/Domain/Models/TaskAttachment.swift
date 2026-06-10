@@ -1,6 +1,6 @@
 import Foundation
 
-struct TaskAttachment: Identifiable, Hashable {
+struct TaskAttachment: Identifiable, Hashable, Codable, Sendable {
     let id: UUID
     var fileName: String
     var fileType: AttachmentType

@@ -97,9 +97,9 @@ struct TimelineTaskModel: Identifiable {
     }
 
     var nodeColor: Color {
-        if isRecentlyAccepted {
-            return .orange
-        }
+        // if isRecentlyAccepted {
+        //     return .orange
+        // }
         switch state {
         case .completed:
             return .gray.opacity(0.45)
@@ -226,16 +226,22 @@ struct TimelineTaskRow: View {
                     }
                 }
                 .padding(.top, 10)
-            } else if !task.isCompleted {
+            } else {
                 Button(action: { onToggleComplete?() }) {
-                    Circle()
-                        .stroke(
-                            task.isOngoing
-                                ? Color(red: 0.13, green: 0.55, blue: 0.13)
-                                : Color(red: 0.1, green: 0.2, blue: 0.4),
-                            lineWidth: 2
-                        )
-                        .frame(width: 24, height: 24)
+                    if task.isCompleted {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 24))
+                            .foregroundColor(.gray)
+                    } else {
+                        Circle()
+                            .stroke(
+                                task.isOngoing
+                                    ? Color(red: 0.13, green: 0.55, blue: 0.13)
+                                    : Color(red: 0.1, green: 0.2, blue: 0.4),
+                                lineWidth: 2
+                            )
+                            .frame(width: 24, height: 24)
+                    }
                 }
                 .padding(.top, 10)
             }

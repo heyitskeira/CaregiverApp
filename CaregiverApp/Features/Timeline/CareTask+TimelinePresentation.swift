@@ -26,7 +26,8 @@ extension CareTask {
             taskNote: instructions,
             repeatOption: recurrenceFrequency.toRepeatOption,
             primaryAssigneeID: assigneeIDs.first,
-            backupAssigneeID: backupAssignee
+            backupAssigneeID: backupAssignee,
+            attachments: attachments
         )
     }
 
@@ -64,7 +65,8 @@ extension CareTask {
             patientID: patientID,
             status: timelineModel.isCompleted ? .completed : (hasAssignees ? .assigned : .unassigned),
             recurrenceFrequency: timelineModel.repeatOption.toRecurrenceFrequency,
-            createdByID: createdByID
+            createdByID: createdByID,
+            attachments: timelineModel.attachments
         )
     }
 
