@@ -19,17 +19,36 @@ enum AppTheme: String {
 
 @main
 struct CaregiverAppApp: App {
+    @State private var showSplash = true
     @State private var router = AppRouter()
     @State private var authService = SupabaseAuthService()
-    @AppStorage("theme") private var theme = AppTheme.light.rawValue
+
+    @AppStorage("theme")
+    private var theme = AppTheme.light.rawValue
 
     var body: some Scene {
         WindowGroup {
-            RootView()
-                .environment(router)
-                .environment(authService)
-                .preferredColorScheme(preferredColorScheme)
-                .task { await syncAuthState() }
+            ZStack {
+                RootView()
+                    .environment(router)
+                    .environment(authService)
+
+                if showSplash {
+                    SplashView()
+                        .transition(.opacity)
+                        .zIndex(1)
+                }
+            }
+            .animation(.easeInOut(duration: 0.5), value: showSplash)
+            .preferredColorScheme(preferredColorScheme)
+            .onAppear {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                    withAnimation(.easeInOut(duration: 0.5)) {
+                        showSplash = false
+                    }
+                }
+            }
+            .task { await syncAuthState() }
         }
     }
 

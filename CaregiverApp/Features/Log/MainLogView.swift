@@ -21,6 +21,7 @@ struct MainLogView: View {
             } else if logs.isEmpty {
                 VStack(spacing: 0) {
                     composeButton
+                        .padding(.horizontal)
                     Spacer()
                     ContentUnavailableView(
                         "No Logs Yet",
