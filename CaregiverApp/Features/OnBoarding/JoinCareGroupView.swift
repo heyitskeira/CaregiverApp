@@ -4,8 +4,11 @@ struct JoinCareGroupView: View {
     @State private var code: [String] = Array(repeating: "", count: 6)
     @FocusState private var focusedIndex: Int?
     @State private var pasteAlert = false
-    
+    @State private var isLoading = false
+    @State private var errorMessage: String?
+
     @Environment(AppRouter.self) private var router
+    @Environment(SupabaseAuthService.self) private var authService
     
     
     
@@ -66,19 +69,36 @@ struct JoinCareGroupView: View {
             .padding(.vertical, 146)
             
             
-            Button(action: {
-                // Handle join group
-                router.screen = .successJoin
-            }) {
-                Text("Join Care Group")
-                    .fontWeight(.medium)
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Color.accentColor)
-                    .foregroundColor(.white)
-                    .clipShape(Capsule())
+            if let errorMessage {
+                Text(errorMessage).foregroundStyle(.red).font(.footnote)
             }
-            .disabled(code.joined().count != 6)
+
+            Button(action: {
+                isLoading = true
+                errorMessage = nil
+                Task {
+                    do {
+                        _ = try await authService.joinCareTeam(code: code.joined())
+                        router.screen = .successJoin
+                    } catch {
+                        errorMessage = error.localizedDescription
+                    }
+                    isLoading = false
+                }
+            }) {
+                if isLoading {
+                    ProgressView().tint(.white)
+                        .frame(maxWidth: .infinity).padding()
+                        .background(Color.accentColor).clipShape(Capsule())
+                } else {
+                    Text("Join Care Group")
+                        .fontWeight(.medium)
+                        .frame(maxWidth: .infinity).padding()
+                        .background(Color.accentColor)
+                        .foregroundColor(.white).clipShape(Capsule())
+                }
+            }
+            .disabled(code.joined().count != 6 || isLoading)
             .padding(.bottom, 60)
             Spacer()
         }
@@ -91,4 +111,5 @@ struct JoinCareGroupView: View {
 
     return JoinCareGroupView()
         .environment(router)
+        .environment(SupabaseAuthService())
 }

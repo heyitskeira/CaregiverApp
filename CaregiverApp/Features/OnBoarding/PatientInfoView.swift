@@ -25,6 +25,9 @@ struct PatientInfoView: View {
     // MARK: - Environment
 
     @Environment(AppRouter.self) private var router
+    @Environment(SupabaseAuthService.self) private var authService
+    @State private var isLoading = false
+    @State private var errorMessage: String?
 
     // MARK: - Computed
 
@@ -300,18 +303,45 @@ struct PatientInfoView: View {
                 }
                 .padding(.vertical, 24)
 
-                Button(action: {
-                    router.screen = .successCreate
-                }) {
-                    Text("Create Care Group")
-                        .fontWeight(.medium)
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(Color.accentColor)
-                        .foregroundColor(.white)
-                        .clipShape(Capsule())
+                if let errorMessage {
+                    Text(errorMessage)
+                        .foregroundStyle(.red)
+                        .font(.footnote)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .disabled(!isFormComplete)
+
+                Button(action: {
+                    isLoading = true
+                    errorMessage = nil
+                    Task {
+                        do {
+                            let birthDate = dob ?? Calendar.current.date(
+                                from: DateComponents(year: 1950, month: 1, day: 1))!
+                            _ = try await authService.createCareTeam(
+                                name: "\(fullName)'s Care Team",
+                                patientName: fullName,
+                                patientDOB: birthDate
+                            )
+                            router.screen = .successCreate
+                        } catch {
+                            errorMessage = error.localizedDescription
+                        }
+                        isLoading = false
+                    }
+                }) {
+                    if isLoading {
+                        ProgressView().tint(.white)
+                            .frame(maxWidth: .infinity).padding()
+                            .background(Color.accentColor).clipShape(Capsule())
+                    } else {
+                        Text("Create Care Group")
+                            .fontWeight(.medium)
+                            .frame(maxWidth: .infinity).padding()
+                            .background(Color.accentColor)
+                            .foregroundColor(.white).clipShape(Capsule())
+                    }
+                }
+                .disabled(!isFormComplete || isLoading)
                 .opacity(isFormComplete ? 1 : 0.5)
             }
             .padding()
@@ -321,9 +351,9 @@ struct PatientInfoView: View {
 
 #Preview {
     let router = AppRouter()
-
     PatientInfoView()
         .environment(router)
+        .environment(SupabaseAuthService())
 }
 
 struct ImagePicker: UIViewControllerRepresentable {

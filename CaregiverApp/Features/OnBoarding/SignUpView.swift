@@ -9,6 +9,9 @@ import SwiftUI
 
 struct SignUpView: View {
     @Environment(AppRouter.self) private var router
+    @Environment(SupabaseAuthService.self) private var authService
+    @State private var isLoading = false
+    @State private var errorMessage: String?
     @Binding var authMode: AuthMode
     @State private var name: String = ""
     @State private var email: String = ""
@@ -157,18 +160,39 @@ struct SignUpView: View {
             }
             .padding(.vertical, 24)
 
-            Button(action: {
-                router.screen = .getStarted
-            }) {
-                Text("Create Account")
-                    .fontWeight(.medium)
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Color.accentColor)
-                    .foregroundColor(.white)
-                    .clipShape(Capsule())
+            if let errorMessage {
+                Text(errorMessage)
+                    .foregroundStyle(.red)
+                    .font(.footnote)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .disabled(!isFormComplete)
+
+            Button(action: {
+                isLoading = true
+                errorMessage = nil
+                Task {
+                    do {
+                        try await authService.signUp(name: name, email: email, password: password)
+                        router.screen = .getStarted
+                    } catch {
+                        errorMessage = error.localizedDescription
+                    }
+                    isLoading = false
+                }
+            }) {
+                if isLoading {
+                    ProgressView().tint(.white)
+                        .frame(maxWidth: .infinity).padding()
+                        .background(Color.accentColor).clipShape(Capsule())
+                } else {
+                    Text("Create Account")
+                        .fontWeight(.medium)
+                        .frame(maxWidth: .infinity).padding()
+                        .background(Color.accentColor)
+                        .foregroundColor(.white).clipShape(Capsule())
+                }
+            }
+            .disabled(!isFormComplete || isLoading)
             .opacity(isFormComplete ? 1 : 0.5)
 
             HStack(alignment: .center, spacing: 8) {

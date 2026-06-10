@@ -9,10 +9,13 @@ import SwiftUI
 
 struct SignInview: View {
     @Environment(AppRouter.self) private var router
+    @Environment(SupabaseAuthService.self) private var authService
     @Binding var authMode: AuthMode
     @State private var phone: String = ""
     @State private var password: String = ""
     @State private var showPassword: Bool = false
+    @State private var isLoading = false
+    @State private var errorMessage: String?
 
     private var isFormComplete: Bool {
         !phone.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
@@ -93,18 +96,43 @@ struct SignInview: View {
             }
             .padding(.vertical, 24)
 
-            Button(action: {
-                router.screen = .home
-            }) {
-                Text("Sign In")
-                    .fontWeight(.medium)
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Color.accentColor)
-                    .foregroundColor(.white)
-                    .clipShape(Capsule())
+            if let errorMessage {
+                Text(errorMessage)
+                    .foregroundStyle(.red)
+                    .font(.footnote)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .disabled(!isFormComplete)
+
+            Button(action: {
+                isLoading = true
+                errorMessage = nil
+                Task {
+                    do {
+                        try await authService.signIn(email: phone, password: password)
+                        router.screen = .home
+                    } catch {
+                        errorMessage = error.localizedDescription
+                    }
+                    isLoading = false
+                }
+            }) {
+                if isLoading {
+                    ProgressView().tint(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.accentColor)
+                        .clipShape(Capsule())
+                } else {
+                    Text("Sign In")
+                        .fontWeight(.medium)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.accentColor)
+                        .foregroundColor(.white)
+                        .clipShape(Capsule())
+                }
+            }
+            .disabled(!isFormComplete || isLoading)
             .opacity(isFormComplete ? 1 : 0.5)
 
             HStack(alignment: .center, spacing: 8) {
