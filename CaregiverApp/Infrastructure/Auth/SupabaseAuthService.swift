@@ -147,6 +147,7 @@ final class SupabaseAuthService: AuthService {
     /// Creates care team + patient + adds creator as primary caregiver member.
     func createCareTeam(name: String, patientName: String, patientDOB: Date) async throws -> (CareTeam, CareRecipient) {
         guard let userID = currentUserID else { throw AuthError.notAuthenticated }
+        let _ = try await supabase.auth.session
 
         struct TeamRow: Codable {
             let id: UUID
