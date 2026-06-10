@@ -7,6 +7,8 @@ import Supabase
 final class SupabaseAuthService: AuthService {
     private(set) var currentUser: UserProfile?
     private(set) var currentMembership: CareTeamMember?
+    private(set) var currentPatientID: UUID?
+    private(set) var currentContactID: UUID?
 
     var isAuthenticated: Bool { currentUser != nil }
     var currentUserID: UUID? { currentUser?.id }
@@ -50,6 +52,8 @@ final class SupabaseAuthService: AuthService {
         try await supabase.auth.signOut()
         currentUser = nil
         currentMembership = nil
+        currentPatientID = nil
+        currentContactID = nil
     }
 
     func refreshSession() async throws {
@@ -140,6 +144,36 @@ final class SupabaseAuthService: AuthService {
                 role: m.role,
                 createdAt: m.createdAt
             )
+
+            // Fetch patient ID using a minimal struct (select "id" only) to avoid
+            // any date-column decode issues with the full DBPatientRow.
+            struct PatientIDRow: Codable {
+                let id: UUID
+                enum CodingKeys: String, CodingKey { case id }
+            }
+            let patientRows: [PatientIDRow] = (try? await supabase
+                .from("care_recipients")
+                .select("id")
+                .eq("care_team_id", value: m.careTeamID)
+                .limit(1)
+                .execute()
+                .value) ?? []
+            currentPatientID = patientRows.first?.id
+
+            // Fetch this user's own care_contacts row via linked_user_id.
+            struct ContactIDRow: Codable {
+                let id: UUID
+                enum CodingKeys: String, CodingKey { case id }
+            }
+            let contactRows: [ContactIDRow] = (try? await supabase
+                .from("care_contacts")
+                .select("id")
+                .eq("care_team_id", value: m.careTeamID)
+                .eq("linked_user_id", value: userID)
+                .limit(1)
+                .execute()
+                .value) ?? []
+            currentContactID = contactRows.first?.id
         }
     }
 
@@ -201,6 +235,31 @@ final class SupabaseAuthService: AuthService {
             userID: userID,
             role: .primaryCaregiver
         )
+        // Store the patient ID directly from the insert response — no decode risk.
+        currentPatientID = recipient.id
+
+        // Create a care_contacts row for the primary caregiver, linked to their
+        // profile via linked_user_id. This is needed for care_logs author FK.
+        struct ContactIDRow: Codable {
+            let id: UUID
+            enum CodingKeys: String, CodingKey { case id }
+        }
+        if let contactRow = try? await (supabase
+            .from("care_contacts")
+            .insert([
+                "care_team_id": team.id.uuidString,
+                "name": currentUser?.name ?? "Primary Caregiver",
+                "phone": currentUser?.phone ?? "",
+                "email": currentUser?.email ?? "",
+                "relationship": "Primary Caregiver",
+                "linked_user_id": userID.uuidString
+            ])
+            .select("id")
+            .single()
+            .execute()
+            .value as ContactIDRow) {
+            currentContactID = contactRow.id
+        }
 
         let careTeam = CareTeam(id: team.id, name: team.name, primaryCaregiverID: team.primaryCaregiverID, createdAt: team.createdAt)
         let patient = CareRecipient(id: recipient.id, careTeamID: team.id, name: patientName, dateOfBirth: patientDOB, gender: "", bloodType: "")
@@ -243,6 +302,28 @@ final class SupabaseAuthService: AuthService {
             userID: userID,
             role: .helper
         )
+
+        // Create/fetch a care_contacts row for this helper, linked via linked_user_id.
+        struct ContactIDRow: Codable {
+            let id: UUID
+            enum CodingKeys: String, CodingKey { case id }
+        }
+        if let contactRow = try? await (supabase
+            .from("care_contacts")
+            .insert([
+                "care_team_id": teamID.uuidString,
+                "name": currentUser?.name ?? "Helper",
+                "phone": currentUser?.phone ?? "",
+                "email": currentUser?.email ?? "",
+                "relationship": "Helper",
+                "linked_user_id": userID.uuidString
+            ])
+            .select("id")
+            .single()
+            .execute()
+            .value as ContactIDRow) {
+            currentContactID = contactRow.id
+        }
 
         return CareTeam(id: team.id, name: team.name, primaryCaregiverID: team.primaryCaregiverID, createdAt: team.createdAt)
     }

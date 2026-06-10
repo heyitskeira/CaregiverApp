@@ -13,6 +13,10 @@ final class MockAuthService: AuthService {
 
     var currentUserID: UUID? { currentUser?.id }
 
+    var currentPatientID: UUID? { SeedData.patientID }
+
+    var currentContactID: UUID? { SeedData.primaryCaregiverID }
+
     var currentRole: CaregiverRole {
         currentMembership?.role ?? .helper
     }

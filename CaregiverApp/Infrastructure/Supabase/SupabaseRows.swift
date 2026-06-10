@@ -38,14 +38,16 @@ struct DBPatientRow: Codable {
     let id: UUID
     let careTeamID: UUID
     var name: String
-    var dateOfBirth: Date
+    /// PostgreSQL `date` columns return "YYYY-MM-DD" — decode as String to avoid
+    /// the Swift ISO8601 decoder rejecting a date-only string.
+    var dateOfBirth: String
     var gender: String
     var bloodType: String
     var allergies: String
     var favoriteFood: String
     var healthNotes: String
-    var createdAt: Date
-    var updatedAt: Date
+    var createdAt: Date?
+    var updatedAt: Date?
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -62,11 +64,16 @@ struct DBPatientRow: Codable {
     }
 
     func toDomain() -> CareRecipient {
-        CareRecipient(
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withFullDate]
+        let dob = formatter.date(from: dateOfBirth) ?? Date()
+        return CareRecipient(
             id: id, careTeamID: careTeamID, name: name,
-            dateOfBirth: dateOfBirth, gender: gender, bloodType: bloodType,
+            dateOfBirth: dob, gender: gender, bloodType: bloodType,
             allergies: allergies, favoriteFood: favoriteFood,
-            healthNotes: healthNotes, createdAt: createdAt, updatedAt: updatedAt
+            healthNotes: healthNotes,
+            createdAt: createdAt ?? Date(),
+            updatedAt: updatedAt ?? Date()
         )
     }
 }

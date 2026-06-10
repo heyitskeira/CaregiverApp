@@ -5,13 +5,24 @@ import Foundation
 final class TimelineStore {
     private let taskRepository: any TaskRepository
     private let contactRepository: any ContactRepository
+    private let patientRepository: any PatientRepository
+    private let currentUserID: UUID
 
     private(set) var tasks: [TimelineTaskModel] = []
     private(set) var isLoading = false
+    /// Populated from the real patient row on first `load()`. Falls back to SeedData for mock/preview.
+    private(set) var currentPatientID: UUID = SeedData.patientID
 
-    init(taskRepository: any TaskRepository, contactRepository: any ContactRepository) {
+    init(
+        taskRepository: any TaskRepository,
+        contactRepository: any ContactRepository,
+        patientRepository: any PatientRepository,
+        currentUserID: UUID = SeedData.primaryCaregiverID
+    ) {
         self.taskRepository = taskRepository
         self.contactRepository = contactRepository
+        self.patientRepository = patientRepository
+        self.currentUserID = currentUserID
     }
 
     func load() async {
@@ -19,6 +30,17 @@ final class TimelineStore {
         defer { isLoading = false }
 
         do {
+            // Resolve the real patient ID once per load so task saves use the correct FK.
+            do {
+                if let patient = try await patientRepository.fetchPatient() {
+                    currentPatientID = patient.id
+                } else {
+                    print("[TimelineStore] fetchPatient() returned nil — no patient row for this care team")
+                }
+            } catch {
+                print("[TimelineStore] fetchPatient() error: \(error)")
+            }
+
             let contacts = try await contactRepository.fetchContacts()
             var contactsByID: [UUID: CareContact] = [:]
             for contact in contacts {
@@ -46,14 +68,8 @@ final class TimelineStore {
         for assignment in assignments {
             try await taskRepository.addAssignment(assignment)
         }
-        if assignments.isEmpty {
-            let autoAssignment = TaskAssignment(
-                taskID: careTask.id,
-                assigneeID: SeedData.primaryCaregiverID,
-                assignedByID: SeedData.primaryCaregiverID
-            )
-            try await taskRepository.addAssignment(autoAssignment)
-        }
+        // Tasks with no assignees remain in the `.unassigned` state — do NOT force-assign
+        // to a hardcoded seed UUID which would fail the Supabase care_contacts FK constraint.
         await load()
     }
 
@@ -70,6 +86,11 @@ final class TimelineStore {
         }
         await load()
     }
+
+    // MARK: - Helpers
+
+    /// UUID of the current signed-in user — used as `created_by_id` when building CareTasks.
+    var resolvedUserID: UUID { currentUserID }
 
     func deleteTask(id: UUID) async throws {
         try await taskRepository.deleteTask(id: id)

@@ -9,6 +9,12 @@ protocol AuthService: Observable {
     var isAuthenticated: Bool { get }
     var currentRole: CaregiverRole { get }
     var currentUserID: UUID? { get }
+    /// The care_recipients.id for this care team. Set at login/sign-up; used
+    /// as the patient_id FK when creating tasks.
+    var currentPatientID: UUID? { get }
+    /// The care_contacts.id for the signed-in user. Set at login/sign-up; used
+    /// as the author_contact_id FK when creating logs.
+    var currentContactID: UUID? { get }
 
     func signIn(email: String, password: String) async throws
     func signOut() async throws

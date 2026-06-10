@@ -86,7 +86,7 @@ struct AddLogSheetView: View {
                     Button {
                         let user = authService.currentUser
                         let authorContact = CareContact(
-                            id: user?.id ?? UUID(),
+                            id: authService.currentContactID ?? user?.id ?? UUID(),
                             careTeamID: SeedData.careTeamID,
                             name: user?.name ?? "Caregiver",
                             relationship: authService.currentRole == .primaryCaregiver ? "Primary Caregiver" : "Helper",

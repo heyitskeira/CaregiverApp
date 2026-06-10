@@ -33,6 +33,8 @@ enum AppTab: String, CaseIterable {
 struct ContentView: View {
     @Environment(\.taskRepository) private var taskRepository
     @Environment(\.contactRepository) private var contactRepository
+    @Environment(\.patientRepository) private var patientRepository
+    @Environment(\.logRepository) private var logRepository
     @Environment(\.authService) private var authService
 
     @State private var selectedTab: AppTab = .timeline
@@ -169,7 +171,9 @@ struct ContentView: View {
         if store == nil {
             store = TimelineStore(
                 taskRepository: taskRepository,
-                contactRepository: contactRepository
+                contactRepository: contactRepository,
+                patientRepository: patientRepository,
+                currentUserID: authService.currentUserID ?? SeedData.primaryCaregiverID
             )
         }
         await store?.load()
@@ -180,8 +184,17 @@ struct ContentView: View {
         _ timelineModel: TimelineTaskModel,
         updating: Bool = false
     ) async {
-        let careTask = CareTask.from(timelineModel: timelineModel)
-        let assignments = CareTask.assignments(from: timelineModel)
+        // Patient ID comes from the auth service — set at care team creation or
+        // session restore using a UUID-only query that has no date decode risk.
+        let patientID = authService.currentPatientID ?? SeedData.patientID
+        let userID = authService.currentUserID ?? SeedData.primaryCaregiverID
+
+        let careTask = CareTask.from(
+            timelineModel: timelineModel,
+            patientID: patientID,
+            createdByID: userID
+        )
+        let assignments = CareTask.assignments(from: timelineModel, assignedByID: userID)
         do {
             if updating {
                 try await store?.update(careTask, assignments: assignments)
@@ -190,7 +203,7 @@ struct ContentView: View {
             }
             tasks = store?.tasks ?? []
         } catch {
-            
+            print("[ContentView] persistTimelineModel error: \(error)")
         }
     }
 
@@ -212,7 +225,13 @@ struct ContentView: View {
 
     private func persistTaskStatus(_ timelineModel: TimelineTaskModel) {
         Task {
-            let careTask = CareTask.from(timelineModel: timelineModel)
+            let userID = authService.currentUserID ?? SeedData.primaryCaregiverID
+            let patientID = authService.currentPatientID ?? SeedData.patientID
+            let careTask = CareTask.from(
+                timelineModel: timelineModel,
+                patientID: patientID,
+                createdByID: userID
+            )
             try? await taskRepository.updateTask(careTask)
         }
     }
@@ -221,6 +240,40 @@ struct ContentView: View {
         showCompletionPopup = false
         completingTask = nil
         persistTaskStatus(task)
+
+        // Build and save a completion log entry so it appears in the Log tab.
+        Task {
+            let user = authService.currentUser
+            // currentContactID is the care_contacts.id for this user — satisfies the FK.
+            let contactID = authService.currentContactID ?? SeedData.primaryCaregiverID
+            let authorContact = CareContact(
+                id: contactID,
+                careTeamID: SeedData.careTeamID,
+                name: user?.name ?? "Caregiver",
+                relationship: authService.currentRole == .primaryCaregiver
+                    ? "Primary Caregiver" : "Helper",
+                phone: user?.phone ?? "",
+                email: user?.email ?? ""
+            )
+
+            // Format: task name + time range header, then the user's notes on a new line.
+            var content = "✅ Completed \"\(task.title)\" (\(task.startTimeString)–\(task.endTimeString))"
+            let trimmedNotes = notes.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !trimmedNotes.isEmpty {
+                content += "\n\n\(trimmedNotes)"
+            }
+
+            let completionLog = Log(
+                author: authorContact,
+                content: content,
+                images: images
+            )
+            do {
+                try await logRepository.saveLog(completionLog)
+            } catch {
+                print("[ContentView] completion log save error: \(error)")
+            }
+        }
     }
 
     private func cancelCompletion(_ task: TimelineTaskModel) {
