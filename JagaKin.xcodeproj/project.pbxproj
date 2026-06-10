@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		BB0001132FC5000000000001 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = BB0001122FC5000000000001 /* Supabase */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		22F377102FC5236600AC3AB0 /* JagaKin.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = JagaKin.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -23,6 +27,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				BB0001132FC5000000000001 /* Supabase in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -65,6 +70,7 @@
 			);
 			name = JagaKin;
 			packageProductDependencies = (
+				BB0001122FC5000000000001 /* Supabase */,
 			);
 			productName = CaregiverApp;
 			productReference = 22F377102FC5236600AC3AB0 /* JagaKin.app */;
@@ -95,6 +101,7 @@
 			mainGroup = 22F377072FC5236600AC3AB0;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
+				BB0001112FC5000000000001 /* XCRemoteSwiftPackageReference "supabase-swift" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 22F377112FC5236600AC3AB0 /* Products */;
@@ -332,6 +339,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		BB0001112FC5000000000001 /* XCRemoteSwiftPackageReference "supabase-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/supabase/supabase-swift";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		BB0001122FC5000000000001 /* Supabase */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = BB0001112FC5000000000001 /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Supabase;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 22F377082FC5236600AC3AB0 /* Project object */;
 }

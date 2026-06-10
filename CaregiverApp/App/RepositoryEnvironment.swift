@@ -16,6 +16,10 @@ private struct AuthServiceKey: EnvironmentKey {
     @MainActor static let defaultValue: any AuthService = MockAuthService()
 }
 
+private struct LogRepositoryKey: EnvironmentKey {
+    @MainActor static let defaultValue: any LogRepository = MockLogRepository()
+}
+
 extension EnvironmentValues {
     var contactRepository: any ContactRepository {
         get { self[ContactRepositoryKey.self] }
@@ -35,5 +39,10 @@ extension EnvironmentValues {
     var authService: any AuthService {
         get { self[AuthServiceKey.self] }
         set { self[AuthServiceKey.self] = newValue }
+    }
+
+    var logRepository: any LogRepository {
+        get { self[LogRepositoryKey.self] }
+        set { self[LogRepositoryKey.self] = newValue }
     }
 }

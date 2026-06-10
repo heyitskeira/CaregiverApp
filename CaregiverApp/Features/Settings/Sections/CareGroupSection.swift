@@ -2,6 +2,7 @@ import SwiftUI
 
 struct CareGroupSection: View {
     @Environment(\.contactRepository) private var contactRepository
+
     @State private var store: CareGroupStore?
     @State private var previewContacts: [CareContact] = []
     @State private var isShowingSystemContactPicker = false
@@ -11,22 +12,18 @@ struct CareGroupSection: View {
         Section {
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
-                    Text("Members")
-                        .font(.headline)
+                    Text("Members").font(.headline)
                     Spacer()
                     NavigationLink {
                         CareGroupListView()
                     } label: {
-                        Text("View All")
-                            .font(.subheadline)
-                            .foregroundStyle(.green)
+                        Text("View All").font(.subheadline).foregroundStyle(.green)
                     }
                 }
 
                 if previewContacts.isEmpty {
                     Text("Add family or friends to share caregiving tasks.")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .font(.subheadline).foregroundStyle(.secondary)
                 } else {
                     CareGroupPreviewStrip(
                         contacts: previewContacts,
@@ -41,8 +38,7 @@ struct CareGroupSection: View {
                         Label("Add from Contacts", systemImage: "person.crop.circle.badge.plus")
                             .frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.small)
+                    .buttonStyle(.borderedProminent).controlSize(.small)
                 }
             }
             .padding(.vertical, 4)
@@ -81,13 +77,8 @@ struct CareGroupPreviewStrip: View {
                 ForEach(contacts) { contact in
                     VStack(spacing: 8) {
                         ContactAvatarView(contact: contact, size: 56)
-                        Text(contact.name)
-                            .font(.caption.weight(.semibold))
-                            .lineLimit(1)
-                        Text(contact.relationship)
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
+                        Text(contact.name).font(.caption.weight(.semibold)).lineLimit(1)
+                        Text(contact.relationship).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
                     }
                     .frame(width: 72)
                 }
@@ -98,16 +89,10 @@ struct CareGroupPreviewStrip: View {
                             RoundedRectangle(cornerRadius: 12, style: .continuous)
                                 .strokeBorder(style: StrokeStyle(lineWidth: 1, dash: [4]))
                                 .foregroundStyle(.tertiary)
-                            Image(systemName: "plus")
-                                .font(.title3.weight(.semibold))
-                                .foregroundStyle(.secondary)
+                            Image(systemName: "plus").font(.title3.weight(.semibold)).foregroundStyle(.secondary)
                         }
                         .frame(width: 56, height: 56)
-                        Text("Add Member")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(2)
-                            .multilineTextAlignment(.center)
+                        Text("Add Member").font(.caption2).foregroundStyle(.secondary).lineLimit(2).multilineTextAlignment(.center)
                     }
                     .frame(width: 72)
                 }
