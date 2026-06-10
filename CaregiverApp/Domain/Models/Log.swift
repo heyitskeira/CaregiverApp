@@ -1,4 +1,5 @@
 import UIKit
+import Foundation
 
 struct Log: Identifiable {
     let id: UUID
@@ -36,7 +37,7 @@ struct LogRow: Codable {
     let content: String
     let imageURLs: [String]
     let createdAt: Date
-
+    
     enum CodingKeys: String, CodingKey {
         case id
         case careTeamID = "care_team_id"
@@ -44,5 +45,19 @@ struct LogRow: Codable {
         case content
         case imageURLs = "image_urls"
         case createdAt = "created_at"
+    }
+}
+
+extension Date {
+
+    var timeAgo: String {
+
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .short
+
+        return formatter.localizedString(
+            for: self,
+            relativeTo: Date()
+        )
     }
 }
