@@ -22,8 +22,8 @@ enum AppTab: String, CaseIterable {
 
     var icon: String {
         switch self {
-        case .timeline: "list.bullet.rectangle.portrait"
-        case .logPage: "doc.text"
+        case .timeline: "calendar.day.timeline.left"
+        case .logPage: "text.book.closed.fill"
         case .profile: "person.crop.circle"
         case .addTask: "plus"
         }

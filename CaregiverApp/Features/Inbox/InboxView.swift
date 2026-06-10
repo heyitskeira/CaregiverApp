@@ -8,6 +8,25 @@ struct InboxView: View {
     @State private var requests: [TaskRequest] = []
     @State private var tasksByID: [UUID: CareTask] = [:]
     @State private var isLoading = true
+    
+    @State private var tasks: [CareTask] = [
+            CareTask(
+                title: "Poopie Pants",
+                scheduledAt: .now,
+                durationMinutes: 120,
+                careTeamID: UUID(),
+                patientID: UUID(),
+                createdByID: UUID()
+            ),
+            CareTask(
+                title: "Puke Nuke",
+                scheduledAt: .now.addingTimeInterval(3600),
+                durationMinutes: 30,
+                careTeamID: UUID(),
+                patientID: UUID(),
+                createdByID: UUID()
+            )
+        ]
 
     private var displayDate: String {
         if Calendar.current.isDateInToday(Date()) {
@@ -91,7 +110,7 @@ struct InboxView: View {
                 Spacer()
             } else if requests.isEmpty {
                 Spacer()
-                VStack(spacing: 8) {
+                VStack(spacing: 8) { // Change icon or image
                     Image(systemName: "tray")
                         .font(.system(size: 40))
                         .foregroundStyle(.gray.opacity(0.4))
@@ -233,30 +252,51 @@ struct InboxRow: View {
 
                 Spacer()
 
-                HStack(spacing: 8) {
-                    // Gray X (decline)
+                HStack(spacing: 6) {
                     Button(action: onDecline) {
-                        Image(systemName: "xmark")
-                            .font(.body.weight(.medium))
-                            .foregroundColor(.gray)
-                            .frame(width: 32, height: 32)
-                            .overlay(
-                                Circle()
-                                    .stroke(Color.gray.opacity(0.4), lineWidth: 1.5)
-                            )
+                        Text("Decline")
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+//                        Image(systemName: "xmark")
+//                            .font(.body.weight(.medium))
+//                            .foregroundColor(.gray)
+//                            .frame(width: 32, height: 32)
+//                            .overlay(
+//                                Circle()
+//                                    .stroke(Color.gray.opacity(0.4), lineWidth: 1.5)
+//                            )
                     }
+                    .frame(width: 65)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 8)
+                    .foregroundStyle(.tint)
+                    .background(
+                        RoundedRectangle(
+                            cornerRadius: 20,
+                            style: .continuous
+                        )
+                        .stroke(.tint, lineWidth: 2)
+                    )
 
-                    // Blue checkmark (accept)
                     Button(action: onAccept) {
-                        Image(systemName: "checkmark")
-                            .font(.body.weight(.medium))
-                            .foregroundColor(Color(hex: 0x2051B9))
-                            .frame(width: 32, height: 32)
-                            .overlay(
-                                Circle()
-                                    .stroke(Color(hex: 0x2051B9), lineWidth: 1.5)
-                            )
+                        Text("Accept")
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                            .foregroundColor(.white)
+//                        Image(systemName: "checkmark")
+//                            .font(.body.weight(.medium))
+//                            .foregroundColor(Color(hex: 0x2051B9))
+//                            .frame(width: 32, height: 32)
+//                            .overlay(
+//                                Circle()
+//                                    .stroke(Color(hex: 0x2051B9), lineWidth: 1.5)
+//                            )
                     }
+                    .frame(width: 65)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 8)
+                    .background(.accent)
+                    .clipShape(Capsule())
                 }
             }
             .padding(.horizontal)

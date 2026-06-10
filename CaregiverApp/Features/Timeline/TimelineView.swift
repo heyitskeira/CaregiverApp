@@ -303,19 +303,22 @@ struct TimelineView: View {
     }
 
     private var emptyStateView: some View {
+//        @ScaledMetric(relativeTo: .body) var imageSize: CGFloat = 50
+        
         VStack(spacing: 12) {
             Spacer()
 
-            Image(systemName: "clipboard")
-                .font(.system(size: 60))
-                .foregroundStyle(.gray.opacity(0.4))
+            Image("TimelineEmpty")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 300, height: 300)
 
-            Text("No task yet")
+            Text("Nothing scheduled yet")
                 .font(.title3)
                 .fontWeight(.semibold)
                 .foregroundStyle(.primary)
 
-            Text("Create your first task by clicking\nthe + button")
+            Text("Add the first task by clicking\nthe + button and we'll help you\nshare it with your family")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
