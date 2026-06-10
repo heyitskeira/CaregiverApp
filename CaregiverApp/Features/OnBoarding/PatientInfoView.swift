@@ -4,7 +4,7 @@ import SwiftUI
 struct PatientInfoView: View {
     // MARK: - State
     @State private var fullName = ""
-    @State private var dob: Date? = nil
+    @State private var dob: Date = Date()
     @State private var gender = ""
     @State private var bloodType = ""
     @State private var height: Double? = nil
@@ -34,7 +34,6 @@ struct PatientInfoView: View {
     private var isFormComplete: Bool {
         guard
             !fullName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-            dob != nil,
             !gender.isEmpty,
             gender != "",
             !bloodType.isEmpty,
@@ -125,10 +124,7 @@ struct PatientInfoView: View {
 
                         DatePicker(
                             "",
-                            selection: Binding(
-                                get: { dob ?? Date() },
-                                set: { dob = $0 }
-                            ),
+                            selection: $dob,
                             displayedComponents: .date
                         )
                     }
@@ -315,12 +311,10 @@ struct PatientInfoView: View {
                     errorMessage = nil
                     Task {
                         do {
-                            let birthDate = dob ?? Calendar.current.date(
-                                from: DateComponents(year: 1950, month: 1, day: 1))!
                             _ = try await authService.createCareTeam(
                                 name: "\(fullName)'s Care Team",
                                 patientName: fullName,
-                                patientDOB: birthDate
+                                patientDOB: dob
                             )
                             router.screen = .successCreate
                         } catch {

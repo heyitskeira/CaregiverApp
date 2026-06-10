@@ -15,7 +15,21 @@ struct AddLogSheetView: View {
     @State private var selectedImages: [UIImage] = []
 
     let onUpload: (Log) -> Void
-
+    
+    private let currentUser = CareContact(
+        careTeamID: UUID(),
+        name: "Sarah Antoso",
+        relationship: "Primary Caregiver"
+    )
+    
+    private let recipient = CareRecipient(
+        careTeamID: UUID(),
+        name: "Grandma Lily",
+        dateOfBirth: .now,
+        gender: "Female",
+        bloodType: "O"
+    )
+    
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -23,12 +37,13 @@ struct AddLogSheetView: View {
                     Divider().padding(.bottom, 12)
 
                     HStack(alignment: .top, spacing: 12) {
-                        Image(systemName: "person.crop.circle.fill").font(.system(size: 40))
+
+//                        Image(systemName: "person.crop.circle.fill").font(.system(size: 40))
 
                         VStack(alignment: .leading, spacing: 8) {
                             VStack(alignment: .leading) {
-                                Text(authService.currentUser?.name ?? "Caregiver").fontWeight(.semibold)
-                                TextField("What's happening?", text: $logContent, axis: .vertical)
+//                                Text(authService.currentUser?.name ?? "Caregiver").fontWeight(.semibold)
+                                TextField("What happened with \(recipient.name)?", text: $logContent, axis: .vertical)
                                     .lineLimit(1...10)
                             }
                             .padding(.bottom, 7)
@@ -96,7 +111,6 @@ struct AddLogSheetView: View {
             }
             .safeAreaInset(edge: .bottom) {
                 HStack {
-                    Spacer()
                     PhotosPicker(
                         selection: $selectedPhotos,
                         maxSelectionCount: 5,
@@ -104,9 +118,18 @@ struct AddLogSheetView: View {
                     ) {
                         Image(systemName: "photo").font(.title2).padding(16)
                     }
-                    .background(.regularMaterial).clipShape(Circle()).shadow(radius: 4)
+                    .background(.regularMaterial)
+                    .clipShape(Circle())
+                    .shadow(radius: 4)
+                    
+                    Image(systemName: "camera")
+                    
+                    Spacer()
+
                 }
-                .padding(.horizontal).padding(.bottom, 8)
+                .foregroundStyle(.primary)
+                .padding(.horizontal)
+                .padding(.bottom, 8)
             }
             .onChange(of: selectedPhotos) {
                 Task {

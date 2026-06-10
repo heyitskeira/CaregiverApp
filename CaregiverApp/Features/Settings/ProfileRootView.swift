@@ -7,6 +7,10 @@ struct ProfileRootView: View {
     }
     @AppStorage("theme") private var theme = AppTheme.light.rawValue
     @State private var selectedLanguage: Language = .English
+    @Environment(SupabaseAuthService.self) private var authService
+    @Environment(AppRouter.self) private var router
+    @State private var isSigningOut = false
+    @State private var signOutError: String?
 
     var body: some View {
         NavigationStack {
@@ -59,23 +63,29 @@ struct ProfileRootView: View {
 
                         Section("Account Settings") {
                             NavigationLink {
-                                //                                CareGroupListView()
                             } label: {
                                 Label("Profile", systemImage: "person")
                             }.disabled(true)
 
-                            NavigationLink {
-                                //                                PatientdetailView(
-                                //                                    patientdetail: SeedData.patient
-                                //                                )
+                            Button {
+                                isSigningOut = true
+                                Task {
+                                    do {
+                                        try await authService.signOut()
+                                        router.screen = .onboarding
+                                    } catch {
+                                        signOutError = error.localizedDescription
+                                    }
+                                    isSigningOut = false
+                                }
                             } label: {
                                 Label(
-                                    "Sign Out",
-                                    systemImage:
-                                        "rectangle.portrait.and.arrow.right"
+                                    isSigningOut ? "Signing Out…" : "Sign Out",
+                                    systemImage: "rectangle.portrait.and.arrow.right"
                                 )
                                 .foregroundStyle(Color.red)
-                            }.disabled(true)
+                            }
+                            .disabled(isSigningOut)
                         }
 
                         //                        Section(header: Text("Preferences")) {
@@ -121,6 +131,8 @@ struct ProfileRootView: View {
 
 #Preview {
     ProfileRootView()
+        .environment(SupabaseAuthService())
+        .environment(AppRouter())
         .environment(
             \.contactRepository,
             AppDependencies.live.contactRepository
