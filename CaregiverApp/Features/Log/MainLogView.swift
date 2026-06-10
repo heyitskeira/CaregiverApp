@@ -68,8 +68,6 @@ struct MainLogView: View {
                                 .padding(.horizontal)
                                 .padding(.vertical, 8)
 
-                            Divider()
-
                             ForEach(logs) { log in
 
                                 LogPost(
