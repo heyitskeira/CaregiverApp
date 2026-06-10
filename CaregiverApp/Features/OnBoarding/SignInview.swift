@@ -11,14 +11,14 @@ struct SignInview: View {
     @Environment(AppRouter.self) private var router
     @Environment(SupabaseAuthService.self) private var authService
     @Binding var authMode: AuthMode
-    @State private var phone: String = ""
+    @State private var email: String = ""
     @State private var password: String = ""
     @State private var showPassword: Bool = false
     @State private var isLoading = false
     @State private var errorMessage: String?
 
     private var isFormComplete: Bool {
-        !phone.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        !email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
         !password.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
@@ -41,11 +41,11 @@ struct SignInview: View {
 
             VStack(spacing: 12) {
                 HStack(spacing: 16) {
-                    Image(systemName: "phone.fill")
+                    Image(systemName: "envelope.fill")
                         .foregroundColor(.accentColor)
                         .frame(width: 22)
-                    TextField("Phone Number", text: $phone)
-                        .keyboardType(.phonePad)
+                    TextField("Email", text: $email)
+                        .keyboardType(.emailAddress)
                         .autocapitalization(.none)
                 }
                 .frame(height: 22)
@@ -61,10 +61,10 @@ struct SignInview: View {
                         .foregroundColor(.accentColor)
                         .frame(width: 22)
                     if showPassword {
-                        SecureField("Password", text: $password)
+                        TextField("Password", text: $password)
                             .frame(maxWidth: .infinity)
                     } else {
-                        TextField("Password", text: $password)
+                        SecureField("Password", text: $password)
                             .frame(maxWidth: .infinity)
                     }
                     Button(action: {
@@ -86,12 +86,14 @@ struct SignInview: View {
                         .stroke(.gray, lineWidth: 1)
                 )
 
-                Button(action: {
-                    // Handle forgot password
-                }) {
-                    Text("Forgot Password?")
-                        .foregroundColor(.gray)
-                        .frame(maxWidth: .infinity, alignment: .trailing)
+                HStack {
+                    Spacer()
+                    Button(action: {
+                        // Handle forgot password
+                    }) {
+                        Text("Forgot Password?")
+                            .foregroundColor(.gray)
+                    }
                 }
             }
             .padding(.vertical, 24)
@@ -108,7 +110,7 @@ struct SignInview: View {
                 errorMessage = nil
                 Task {
                     do {
-                        try await authService.signIn(email: phone, password: password)
+                        try await authService.signIn(email: email, password: password)
                         router.screen = .home
                     } catch {
                         errorMessage = error.localizedDescription

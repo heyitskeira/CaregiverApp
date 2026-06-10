@@ -20,5 +20,7 @@ struct AuthView: View {
 }
 
 #Preview {
-    AuthView()
+    let router = AppRouter()
+    return AuthView()
+        .environment(router)
 }

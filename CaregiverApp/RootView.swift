@@ -5,22 +5,15 @@
 
 import SwiftUI
 
-enum AppScreen {
-    case onboarding
-    case signIn
-    case signUp
-    case getStarted
-    case successCreate
-    case successJoin
-    case home
-}
-
 struct RootView: View {
     @Environment(AppRouter.self) private var router
     @Environment(SupabaseAuthService.self) private var authService
 
     var body: some View {
         switch router.screen {
+
+        case .splash:
+            SplashView()
 
         case .onboarding:
             OnboardingMainView()
@@ -37,19 +30,30 @@ struct RootView: View {
         case .successCreate:
             CareGroupSuccessView(
                 type: .created,
-                groupName: authService.currentMembership != nil ? "Your Care Team" : "Care Team",
-                members: [(name: authService.currentUser?.name ?? "You", image: "")]
+                groupName: "Your Care Team",
+                members: [
+                    (
+                        name: authService.currentUser?.name ?? "You",
+                        image: ""
+                    )
+                ]
             )
 
         case .successJoin:
             CareGroupSuccessView(
                 type: .joined,
                 groupName: "Care Team",
-                members: [(name: authService.currentUser?.name ?? "You", image: "")]
+                members: [
+                    (
+                        name: authService.currentUser?.name ?? "You",
+                        image: ""
+                    )
+                ]
             )
 
         case .home:
             let deps = AppDependencies.supabase(authService: authService)
+
             ContentView()
                 .environment(\.contactRepository, deps.contactRepository)
                 .environment(\.taskRepository, deps.taskRepository)
