@@ -1,15 +1,5 @@
-//
-//  CaregiverAppApp.swift
-//  CaregiverApp
-//
-
 import Observation
 import SwiftUI
-
-@Observable
-class AppRouter {
-    var screen: AppScreen = .onboarding
-}
 
 enum AppTheme: String {
     case light
@@ -19,7 +9,6 @@ enum AppTheme: String {
 
 @main
 struct CaregiverAppApp: App {
-    @State private var showSplash = true
     @State private var router = AppRouter()
     @State private var authService = SupabaseAuthService()
 
@@ -28,42 +17,38 @@ struct CaregiverAppApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ZStack {
-                RootView()
-                    .environment(router)
-                    .environment(authService)
-
-                if showSplash {
-                    SplashView()
-                        .transition(.opacity)
-                        .zIndex(1)
+            RootView()
+                .environment(router)
+                .environment(authService)
+                .preferredColorScheme(preferredColorScheme)
+                .task {
+                    await initializeApp()
                 }
-            }
-            .animation(.easeInOut(duration: 0.5), value: showSplash)
-            .preferredColorScheme(preferredColorScheme)
-            .onAppear {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                    withAnimation(.easeInOut(duration: 0.5)) {
-                        showSplash = false
-                    }
-                }
-            }
-            .task { await syncAuthState() }
         }
     }
 
-    /// Keep router in sync with Supabase session state.
-    private func syncAuthState() async {
-        if authService.isAuthenticated && authService.currentMembership != nil {
-            router.screen = .home
+    private func initializeApp() async {
+        await authService.restoreSession()
+
+        try? await Task.sleep(for: .seconds(2))
+
+        if authService.isAuthenticated {
+            router.screen = authService.currentMembership != nil
+                ? .home
+                : .getStarted
+        } else {
+            router.screen = .onboarding
         }
     }
 
     private var preferredColorScheme: ColorScheme? {
         switch AppTheme(rawValue: theme) ?? .light {
-        case .light: return .light
-        case .dark: return .dark
-        case .auto: return nil
+        case .light:
+            return .light
+        case .dark:
+            return .dark
+        case .auto:
+            return nil
         }
     }
 }

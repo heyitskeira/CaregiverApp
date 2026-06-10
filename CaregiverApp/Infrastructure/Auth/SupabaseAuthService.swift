@@ -56,10 +56,8 @@ final class SupabaseAuthService: AuthService {
         let session = try await supabase.auth.refreshSession()
         try await loadProfile(userID: session.user.id)
     }
-
-    // MARK: - Private
-
-    private func restoreSession() async {
+    
+    func restoreSession() async {
         do {
             let session = try await supabase.auth.session
             try await loadProfile(userID: session.user.id)
@@ -68,6 +66,9 @@ final class SupabaseAuthService: AuthService {
             currentMembership = nil
         }
     }
+
+    // MARK: - Private
+
 
     private func loadProfile(userID: UUID) async throws {
         struct ProfileRow: Codable {

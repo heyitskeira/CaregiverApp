@@ -97,10 +97,10 @@ struct SignUpView: View {
                         .foregroundColor(.accentColor)
                         .frame(width: 22)
                     if showPassword {
-                        SecureField("Password", text: $password)
+                        TextField("Password", text: $password)
                             .frame(maxWidth: .infinity)
                     } else {
-                        TextField("Password", text: $password)
+                        SecureField("Password", text: $password)
                             .frame(maxWidth: .infinity)
                     }
                     Button(action: {
@@ -127,12 +127,12 @@ struct SignUpView: View {
                         .foregroundColor(.accentColor)
                         .frame(width: 22)
                     if showPasswordConfirm {
-                        SecureField(
+                        TextField(
                             "Password Confirmation",
                             text: $passwordConfirm
                         )
                     } else {
-                        TextField(
+                        SecureField(
                             "Password Confirmation",
                             text: $passwordConfirm
                         )
