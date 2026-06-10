@@ -22,12 +22,28 @@ final class SupabaseAuthService: AuthService {
     }
 
     func signUp(name: String, email: String, password: String) async throws {
-        let session = try await supabase.auth.signUp(
+        let response = try await supabase.auth.signUp(
             email: email,
             password: password,
             data: ["full_name": .string(name)]
         )
-        try await loadProfile(userID: session.user.id)
+        guard let user = response.user else { return }
+        // Build currentUser from sign-up data — the handle_new_user trigger creates
+        // the profiles row asynchronously, so querying it immediately would race.
+        currentUser = UserProfile(
+            id: user.id,
+            name: name,
+            phone: "",
+            email: email,
+            avatarURL: nil,
+            createdAt: user.createdAt,
+            updatedAt: user.updatedAt
+        )
+        // If email confirmation is disabled, a session is returned immediately —
+        // try to pull the full profile (trigger should have run by now).
+        if response.session != nil {
+            try? await loadProfile(userID: user.id)
+        }
     }
 
     func signOut() async throws {
@@ -87,23 +103,24 @@ final class SupabaseAuthService: AuthService {
             }
         }
 
-        let profile: ProfileRow = try await supabase
+        let profiles: [ProfileRow] = try await supabase
             .from("profiles")
             .select()
             .eq("id", value: userID)
-            .single()
             .execute()
             .value
 
-        currentUser = UserProfile(
-            id: profile.id,
-            name: profile.name,
-            phone: profile.phone,
-            email: profile.email,
-            avatarURL: profile.avatarURL,
-            createdAt: profile.createdAt,
-            updatedAt: profile.updatedAt
-        )
+        if let profile = profiles.first {
+            currentUser = UserProfile(
+                id: profile.id,
+                name: profile.name,
+                phone: profile.phone,
+                email: profile.email,
+                avatarURL: profile.avatarURL,
+                createdAt: profile.createdAt,
+                updatedAt: profile.updatedAt
+            )
+        }
 
         let memberships: [MemberRow] = try await supabase
             .from("care_team_members")
