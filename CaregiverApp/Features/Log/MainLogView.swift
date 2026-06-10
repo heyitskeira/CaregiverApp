@@ -2,66 +2,92 @@
 //  MainLogView.swift
 //  CaregiverApp
 //
-//  Created by Christopher Jonathan on 03/06/26.
-//
 
 import SwiftUI
 
 struct MainLogView: View {
-    
+    @Environment(\.logRepository) private var logRepository
+    @Environment(SessionStore.self) private var session
+
     @State private var showingAddLog = false
-    
     @State private var logs: [Log] = []
-        
+    @State private var isLoading = false
+
     var body: some View {
-        
-        NavigationStack{
-            Button {
-                showingAddLog = true
-            } label:{
-                HStack{
-                    Image(systemName: "person.crop.circle.fill")
-                        .font(.largeTitle)
-                    
-                    VStack (alignment: .leading){
-                        Text("Sarah Antoso")
-                            .font(.body)
-                            .fontWeight(.semibold)
-                        
-                        Text("Anything to let others know?")
-                            .font(.subheadline)
-                            .opacity(0.5)
-                    }
-                    
+        Group {
+            if isLoading && logs.isEmpty {
+                ProgressView()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if logs.isEmpty {
+                VStack(spacing: 0) {
+                    composeButton
                     Spacer()
-                    
-                    Image(systemName: "square.and.pencil")
-                        .font(.title)
+                    ContentUnavailableView(
+                        "No Logs Yet",
+                        systemImage: "scroll",
+                        description: Text("Tap the compose button to add the first care log.")
+                    )
+                    Spacer()
                 }
-            }
-            .buttonStyle(.glass)
-            .padding(.vertical)
-            
-            ScrollView {
-                LazyVStack {
-                    ForEach(logs) { log in
-                        LogPost(log: log)
-                        Divider()
+                .padding(.horizontal)
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: 0) {
+                        composeButton
+                            .padding(.horizontal)
                             .padding(.vertical, 8)
+                        Divider()
+                        ForEach(logs) { log in
+                            LogPost(log: log)
+                                .padding(.horizontal)
+                            Divider().padding(.vertical, 8)
+                        }
                     }
                 }
+                .refreshable { await reloadLogs() }
             }
-            .padding(.horizontal, 12)
         }
+        .navigationTitle("Log")
         .sheet(isPresented: $showingAddLog) {
             AddLogSheetView { newLog in
-                logs.insert(newLog, at: 0)
+                Task {
+                    try? await logRepository.saveLog(newLog)
+                    await reloadLogs()
+                }
             }
         }
-        .padding(.horizontal)
+        .task { await reloadLogs() }
+    }
+
+    private var composeButton: some View {
+        Button {
+            showingAddLog = true
+        } label: {
+            HStack {
+                Image(systemName: "person.crop.circle.fill").font(.largeTitle)
+                VStack(alignment: .leading) {
+                    Text(session.currentUser.name)
+                        .font(.body).fontWeight(.semibold)
+                    Text("Anything to let others know?")
+                        .font(.subheadline).opacity(0.5)
+                }
+                Spacer()
+                Image(systemName: "square.and.pencil").font(.title)
+            }
+        }
+        .buttonStyle(.glass)
+        .padding(.vertical, 8)
+    }
+
+    private func reloadLogs() async {
+        isLoading = true
+        defer { isLoading = false }
+        logs = (try? await logRepository.fetchLogs()) ?? []
     }
 }
 
 #Preview {
     MainLogView()
+        .environment(\.logRepository, AppDependencies.live.logRepository)
+        .environment(SessionStore())
 }

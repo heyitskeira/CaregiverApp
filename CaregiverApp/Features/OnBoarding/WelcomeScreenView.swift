@@ -1,18 +1,18 @@
 import SwiftUI
 
 struct WelcomeScreenView: View {
+    @State private var showAuth = false
+    @State private var initialAuthMode: AuthMode = .signIn
+
     var body: some View {
         ZStack {
             GeometryReader { geo in
-                // Decorative shapes (mimic blob/wave background)
                 Ellipse()
                     .fill(
                         LinearGradient(
-                            colors: [
-                                Color.accentColor,
-                                Color(red: 234 / 255, green: 241 / 255, blue: 250 / 255)                            ],
+                            colors: [Color.accentColor, Color(red: 234/255, green: 241/255, blue: 250/255)],
                             startPoint: .top,
-                            endPoint: UnitPoint(x:0.5, y :0.8)
+                            endPoint: UnitPoint(x: 0.5, y: 0.8)
                         )
                     )
                     .frame(width: 150, height: 100)
@@ -22,12 +22,9 @@ struct WelcomeScreenView: View {
                 Circle()
                     .fill(
                         LinearGradient(
-                            colors: [
-                                Color.accentColor,
-                                Color(red: 234 / 255, green: 241 / 255, blue: 250 / 255)
-                            ],
+                            colors: [Color.accentColor, Color(red: 234/255, green: 241/255, blue: 250/255)],
                             startPoint: .top,
-                            endPoint: UnitPoint(x:0.5, y :0.8)
+                            endPoint: UnitPoint(x: 0.5, y: 0.8)
                         )
                     )
                     .frame(width: 120)
@@ -37,12 +34,10 @@ struct WelcomeScreenView: View {
                 Ellipse()
                     .fill(
                         LinearGradient(
-                            colors: [
-                                Color.accentColor,
-                                Color(red: 234 / 255, green: 241 / 255, blue: 250 / 255)
-                            ],
+                            colors: [Color.accentColor, Color(red: 234/255, green: 241/255, blue: 250/255)],
                             startPoint: .top,
-                            endPoint: UnitPoint(x:0.5, y :0.8)                        )
+                            endPoint: UnitPoint(x: 0.5, y: 0.8)
+                        )
                     )
                     .frame(width: 140, height: 200)
                     .offset(x: geo.size.width - 50, y: geo.size.height - 400)
@@ -51,12 +46,9 @@ struct WelcomeScreenView: View {
                 RoundedRectangle(cornerRadius: 60)
                     .fill(
                         LinearGradient(
-                            colors: [
-                                Color.accentColor,
-                                Color(red: 234 / 255, green: 241 / 255, blue: 250 / 255)
-                            ],
+                            colors: [Color.accentColor, Color(red: 234/255, green: 241/255, blue: 250/255)],
                             startPoint: .top,
-                            endPoint: UnitPoint(x:0.5, y :0.7)
+                            endPoint: UnitPoint(x: 0.5, y: 0.7)
                         )
                     )
                     .frame(width: 180, height: 180)
@@ -66,8 +58,7 @@ struct WelcomeScreenView: View {
 
             VStack(spacing: 126) {
                 Spacer()
-                VStack(spacing: 32){
-                    // Logo placeholder
+                VStack(spacing: 32) {
                     Circle()
                         .fill(Color.accentColor)
                         .frame(width: 200, height: 200)
@@ -75,67 +66,55 @@ struct WelcomeScreenView: View {
                     VStack(spacing: 12) {
                         VStack {
                             Text("Welcome to")
-                                .font(.largeTitle)
-                                .fontWeight(.heavy)
-                                .foregroundColor(.primary)
-                            
+                                .font(.largeTitle).fontWeight(.heavy).foregroundColor(.primary)
                             Text("Caregiver APP")
-                                .font(.largeTitle)
-                                .fontWeight(.heavy)
-                                .foregroundColor(.accent)
+                                .font(.largeTitle).fontWeight(.heavy).foregroundColor(.accent)
                         }
-                        
-                        VStack{
+                        VStack {
                             Text("Coordinate Care. Share Tasks.")
-                                .font(.body)
-                                .multilineTextAlignment(.center)
-                                .foregroundColor(.primary)
-                                .lineLimit(nil)
+                                .font(.body).multilineTextAlignment(.center).foregroundColor(.primary)
                             Text("Stay Connected.")
-                                .font(.body)
-                                .multilineTextAlignment(.center)
-                                .foregroundColor(.primary)
-                                .lineLimit(nil)
+                                .font(.body).multilineTextAlignment(.center).foregroundColor(.primary)
                         }
                     }
                 }
                 VStack(spacing: 16) {
-                    Button(action: {
-                        // Handle create account
-                    }) {
+                    Button {
+                        initialAuthMode = .signUp
+                        showAuth = true
+                    } label: {
                         Text("Create Account")
                             .fontWeight(.semibold)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 48)
+                            .frame(maxWidth: .infinity).frame(height: 48)
                             .background(Color.accentColor)
                             .foregroundColor(.white)
                             .cornerRadius(24)
                     }
-                    
-                    Button(action: {
-                        // Handle sign in
-                    }) {
+
+                    Button {
+                        initialAuthMode = .signIn
+                        showAuth = true
+                    } label: {
                         Text("Sign In")
                             .fontWeight(.semibold)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 48)
+                            .frame(maxWidth: .infinity).frame(height: 48)
                             .background(Color.clear)
                             .foregroundColor(.accentColor)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 24)
-                                    .stroke(Color.accentColor, lineWidth: 2)
-                            )
+                            .overlay(RoundedRectangle(cornerRadius: 24).stroke(Color.accentColor, lineWidth: 2))
                     }
                 }
                 .padding(.horizontal, 36)
                 .padding(.bottom, 60)
-                
                 Spacer()
             }
+        }
+        .fullScreenCover(isPresented: $showAuth) {
+            AuthView(initialMode: initialAuthMode)
         }
     }
 }
 
 #Preview {
     WelcomeScreenView()
+        .environment(SessionStore())
 }

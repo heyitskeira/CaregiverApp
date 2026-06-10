@@ -2,7 +2,7 @@
 
 ## Overview
 
-CaregiverApp is a feature-first SwiftUI iOS application. UI talks to repository protocols; Milestone 1 uses mock implementations backed by seed data. Supabase Postgres schema and RLS are applied on the remote project; the iOS client will connect in Milestone 2.
+CaregiverApp is a feature-first SwiftUI iOS application. UI talks to repository protocols; Milestone 1 uses mock implementations backed by seed data. e Postgres schema and RLS are applied on the remote project; the iOS client will connect in Milestone 2.
 
 ## Navigation
 
@@ -48,7 +48,7 @@ Repositories are injected via SwiftUI `Environment` from `AppDependencies.live` 
 | Model | Role |
 |-------|------|
 | `CareTeam` | Household scope for patient, contacts, and tasks |
-| `UserProfile` | Signed-in caregiver (maps to Supabase `profiles`) |
+| `UserProfile` | Signed-in caregiver (maps to e `profiles`) |
 | `CareContact` | Care group member assignable to tasks |
 | `CareRecipient` | Patient profile and care context |
 | `CareTask` | Scheduled caregiving task (multi-assignee, recurrence) |
@@ -57,7 +57,7 @@ Repositories are injected via SwiftUI `Environment` from `AppDependencies.live` 
 | `TaskRequest` | Inbox volunteer request for an unassigned task |
 | `TaskStatus` | `unassigned`, `assigned`, `completed` |
 
-See [SUPABASE_BACKEND_PLAN.md](SUPABASE_BACKEND_PLAN.md) for Postgres schema and rollout phases.
+See [E_BACKEND_PLAN.md](E_BACKEND_PLAN.md) for Postgres schema and rollout phases.
 
 ## Repositories
 
@@ -82,14 +82,14 @@ See [SUPABASE_BACKEND_PLAN.md](SUPABASE_BACKEND_PLAN.md) for Postgres schema and
 
 | Layer | Status |
 |-------|--------|
-| Supabase Postgres schema | Applied (9 tables) |
+| e Postgres schema | Applied (9 tables) |
 | Row Level Security | Enabled on all tables |
-| Supabase Auth | Planned — Milestone 2 |
-| supabase-swift in iOS | Planned — Milestone 2 |
+| e Auth | Planned — Milestone 2 |
+| e-swift in iOS | Planned — Milestone 2 |
 | Realtime | Planned — Milestone 3 |
 | APNs push | Planned — Milestone 3 |
 
-Milestone 1 intentionally uses mocks so UI work could proceed in parallel. Replace mocks with Supabase repository implementations per [SUPABASE_BACKEND_PLAN.md](SUPABASE_BACKEND_PLAN.md).
+Milestone 1 intentionally uses mocks so UI work could proceed in parallel. Replace mocks with e repository implementations per [E_BACKEND_PLAN.md](E_BACKEND_PLAN.md).
 
 ## File Map (source of truth)
 

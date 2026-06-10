@@ -4,8 +4,8 @@ import Foundation
 final class MockTaskRepository: TaskRepository {
     private var tasks: [CareTask]
 
-    init(tasks: [CareTask] = SeedData.sampleTasks) {
-        self.tasks = tasks
+    init(tasks: [CareTask]? = nil) {
+        self.tasks = tasks ?? SeedData.makeSampleTasks()
     }
 
     func fetchAllTasks() async throws -> [CareTask] {
@@ -27,8 +27,11 @@ final class MockTaskRepository: TaskRepository {
     }
 
     func updateTask(_ task: CareTask) async throws {
-        guard let index = tasks.firstIndex(where: { $0.id == task.id }) else { return }
-        tasks[index] = task
+        if let index = tasks.firstIndex(where: { $0.id == task.id }) {
+            tasks[index] = task
+        } else {
+            try await saveTask(task)
+        }
     }
 
     func deleteTask(id: UUID) async throws {

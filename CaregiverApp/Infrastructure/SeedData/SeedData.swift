@@ -63,30 +63,36 @@ enum SeedData {
         ),
     ]
 
-    static let sampleTasks: [CareTask] = [
-        CareTask(
-            title: "Give Meds",
-            scheduledAt: Calendar.current.date(bySettingHour: 6, minute: 0, second: 0, of: .now)!,
-            durationMinutes: 15,
-            instructions: "Morning medication with breakfast.",
-            careTeamID: careTeamID,
-            patientID: patientID,
-            assigneeIDs: [lilyID],
-            status: .assigned,
-            recurrence: TaskRecurrence(frequency: .daily),
-            createdByID: primaryCaregiverID
-        ),
-        CareTask(
-            id: hospitalVisitTaskID,
-            title: "Hospital Visit",
-            scheduledAt: Calendar.current.date(bySettingHour: 9, minute: 0, second: 0, of: .now)!,
-            durationMinutes: 120,
-            instructions: "Bring insurance card and appointment letter.",
-            careTeamID: careTeamID,
-            patientID: patientID,
-            createdByID: primaryCaregiverID
-        ),
-    ]
+    static func makeSampleTasks(on referenceDate: Date = .now) -> [CareTask] {
+        let calendar = Calendar.current
+        return [
+            CareTask(
+                title: "Give Meds",
+                scheduledAt: calendar.date(bySettingHour: 6, minute: 0, second: 0, of: referenceDate)!,
+                durationMinutes: 15,
+                instructions: "Morning medication with breakfast.",
+                careTeamID: careTeamID,
+                patientID: patientID,
+                assigneeIDs: [lilyID],
+                status: .assigned,
+                recurrence: TaskRecurrence(frequency: .daily),
+                createdByID: primaryCaregiverID
+            ),
+            CareTask(
+                id: hospitalVisitTaskID,
+                title: "Hospital Visit",
+                scheduledAt: calendar.date(bySettingHour: 9, minute: 0, second: 0, of: referenceDate)!,
+                durationMinutes: 120,
+                instructions: "Bring insurance card and appointment letter.",
+                careTeamID: careTeamID,
+                patientID: patientID,
+                createdByID: primaryCaregiverID
+            ),
+        ]
+    }
+
+    /// Sample tasks scheduled on today — refreshed each time the mock repository is created.
+    static var sampleTasks: [CareTask] { makeSampleTasks() }
 
     static let sampleTaskRequests: [TaskRequest] = [
         TaskRequest(taskID: hospitalVisitTaskID, requesterID: annaID),

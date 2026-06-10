@@ -67,10 +67,20 @@ struct PatientEditView: View {
                 favoriteFood = patient.favoriteFood
                 healthNotes = patient.healthNotes
             }
+            .alert("Could Not Save", isPresented: Binding(
+                get: { saveError != nil },
+                set: { if !$0 { saveError = nil } }
+            )) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(saveError ?? "")
+            }
         }
-        
+
     }
     
+    @State private var saveError: String?
+
     private func saveChanges() {
         patient.name = name
         patient.dateOfBirth = dateOfBirth
@@ -81,8 +91,12 @@ struct PatientEditView: View {
         patient.healthNotes = healthNotes
 
         Task {
-            try? await patientRepository.savePatient(patient)
-            dismiss()
+            do {
+                try await patientRepository.savePatient(patient)
+                dismiss()
+            } catch {
+                saveError = "Could not save patient information. Please try again."
+            }
         }
     }
     

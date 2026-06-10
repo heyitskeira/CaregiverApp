@@ -1,12 +1,16 @@
 import SwiftUI
 
 struct SettingsRootView: View {
+    @Environment(SessionStore.self) private var session
+    @Environment(\.patientRepository) private var patientRepository
+
     enum Language: String, CaseIterable, Identifiable {
         case English, Indonesian, Dutch, Spanish
         var id: Self { self }
     }
 
     @State private var selectedLanguage: Language = .English
+    @State private var patient: CareRecipient? = nil
 
     var body: some View {
         List {
@@ -20,7 +24,11 @@ struct SettingsRootView: View {
 
             Section {
                 NavigationLink {
-                    PatientdetailView(patientdetail: SeedData.patient)
+                    if let p = patient {
+                        PatientdetailView(patientdetail: p)
+                    } else {
+                        PatientdetailView(patientdetail: SeedData.patient)
+                    }
                 } label: {
                     Text("View Patient")
                 }
@@ -30,7 +38,7 @@ struct SettingsRootView: View {
                 NavigationLink {
                     NotifsettingView()
                 } label: {
-                    PreferenceList(menuImage: "bell", menuName: "Notification Presferences")
+                    PreferenceList(menuImage: "bell", menuName: "Notification Preferences")
                 }
 
                 HStack {
@@ -48,37 +56,55 @@ struct SettingsRootView: View {
                     PreferenceList(menuImage: "lock", menuName: "Privacy & Security")
                 }
             }
+
+            Section {
+                Button(role: .destructive) {
+                    session.signOut()
+                } label: {
+                    Label("Sign Out", systemImage: "rectangle.portrait.and.arrow.right")
+                }
+            }
         }
         .listStyle(.insetGrouped)
         .navigationTitle("Settings")
         .navigationBarTitleDisplayMode(.large)
+        .task {
+            patient = try? await patientRepository.fetchPatient()
+        }
     }
 
     private var profileHeader: some View {
         HStack(spacing: 16) {
-            Image("profile1")
-                .resizable()
-                .scaledToFill()
-                .frame(width: 88, height: 88)
-                .clipShape(Circle())
+            ZStack {
+                Circle().fill(Color.accentColor.opacity(0.15)).frame(width: 88, height: 88)
+                Text(initials(for: session.currentUser.name))
+                    .font(.title2.bold())
+                    .foregroundStyle(Color.accentColor)
+            }
 
             VStack(alignment: .leading, spacing: 8) {
-                Text("Sarah Sechan")
+                Text(session.currentUser.name)
                     .font(.title3.weight(.semibold))
 
-                Text("Primary Caregiver")
+                Text(session.currentUser.role == .primaryCaregiver ? "Primary Caregiver" : "Helper")
                     .font(.caption.weight(.medium))
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 4)
+                    .padding(.horizontal, 10).padding(.vertical, 4)
                     .background(Capsule().fill(Color.green.opacity(0.25)))
 
-                Label("+628123456789", systemImage: "phone.fill")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                if !session.currentUser.phone.isEmpty {
+                    Label(session.currentUser.phone, systemImage: "phone.fill")
+                        .font(.subheadline).foregroundStyle(.secondary)
+                }
             }
 
             Spacer(minLength: 0)
         }
+    }
+
+    private func initials(for name: String) -> String {
+        let parts = name.split(separator: " ")
+        let letters = parts.prefix(2).compactMap { $0.first.map { String($0) } }
+        return letters.joined()
     }
 }
 
@@ -86,5 +112,7 @@ struct SettingsRootView: View {
     NavigationStack {
         SettingsRootView()
     }
+    .environment(SessionStore())
     .environment(\.contactRepository, AppDependencies.live.contactRepository)
+    .environment(\.patientRepository, AppDependencies.live.patientRepository)
 }

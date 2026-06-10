@@ -5,17 +5,30 @@ enum AuthMode {
 }
 
 struct AuthView: View {
-    @State private var authMode: AuthMode = .signIn
-    
+    var initialMode: AuthMode = .signIn
+    @State private var authMode: AuthMode
+    @State private var showGetStarted = false
+
+    init(initialMode: AuthMode = .signIn) {
+        self.initialMode = initialMode
+        _authMode = State(initialValue: initialMode)
+    }
+
     var body: some View {
-        if (authMode == .signIn) {
-            SignInview(authMode: $authMode)
-        } else {
-            SignUpView(authMode: $authMode)
+        Group {
+            if authMode == .signIn {
+                SignInview(authMode: $authMode, onSuccess: { showGetStarted = true })
+            } else {
+                SignUpView(authMode: $authMode, onSuccess: { showGetStarted = true })
+            }
+        }
+        .fullScreenCover(isPresented: $showGetStarted) {
+            GetStartedView()
         }
     }
 }
 
 #Preview {
     AuthView()
+        .environment(SessionStore())
 }

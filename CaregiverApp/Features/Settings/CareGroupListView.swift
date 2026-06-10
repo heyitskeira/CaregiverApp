@@ -2,6 +2,8 @@ import SwiftUI
 
 struct CareGroupListView: View {
     @Environment(\.contactRepository) private var contactRepository
+    @Environment(SessionStore.self) private var session
+
     @State private var store: CareGroupStore?
     @State private var searchText = ""
     @State private var isShowingSystemContactPicker = false
@@ -54,7 +56,7 @@ struct CareGroupListView: View {
             }
         }
         .careGroupAddMemberSheets(
-            careTeamID: SeedData.careTeamID,
+            careTeamID: session.currentCareTeam.id,
             isShowingSystemContactPicker: $isShowingSystemContactPicker,
             importedDraft: $importedDraft
         ) { contact in
@@ -62,7 +64,7 @@ struct CareGroupListView: View {
             try await store.save(contact)
         }
         .navigationDestination(for: ContactEditorMode.self) { mode in
-            ContactDetailView(careTeamID: SeedData.careTeamID, mode: mode) { contact in
+            ContactDetailView(careTeamID: session.currentCareTeam.id, mode: mode) { contact in
                 guard let store else { return }
                 try await store.save(contact)
             }
@@ -96,9 +98,7 @@ struct CareGroupListView: View {
         didStartLoad = true
         let newStore = CareGroupStore(contactRepository: contactRepository)
         store = newStore
-        Task {
-            await newStore.load()
-        }
+        Task { await newStore.load() }
     }
 
     private func deleteContacts(at offsets: IndexSet) {

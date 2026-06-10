@@ -25,10 +25,11 @@ struct NotifsettingView: View {
                     Toggle("Dial tone", isOn: $isEnableTone)
                     Text("Play sound whenever new notification pops up")
                         .foregroundStyle(Color.secondary)
-                        .padding(.trailing, 80)
                 }
             }
         }
+        .navigationTitle("Notifications")
+        .navigationBarTitleDisplayMode(.large)
     }
 }
 

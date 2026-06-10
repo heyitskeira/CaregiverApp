@@ -19,18 +19,17 @@ extension CareTask {
             state: taskState,
             taskNote: instructions,
             repeatOption: recurrence.repeatOption,
+            repeatInterval: recurrence.interval,
+            repeatUnit: recurrence.unit?.repeatUnit ?? .weeks,
             assigneeIDs: assigneeIDs
         )
     }
 
     private var taskState: TaskState {
         switch status {
-        case .completed:
-            return .completed
-        case .unassigned:
-            return .pending
-        case .assigned:
-            return .assigned
+        case .completed: return .completed
+        case .unassigned: return .pending
+        case .assigned: return .assigned
         }
     }
 
@@ -55,7 +54,11 @@ extension CareTask {
             patientID: patientID,
             assigneeIDs: timelineModel.assigneeIDs,
             status: timelineModel.isCompleted ? .completed : (timelineModel.assigneeIDs.isEmpty ? .unassigned : .assigned),
-            recurrence: TaskRecurrence.from(repeatOption: timelineModel.repeatOption),
+            recurrence: TaskRecurrence.from(
+                repeatOption: timelineModel.repeatOption,
+                interval: timelineModel.repeatInterval,
+                unit: timelineModel.repeatUnit
+            ),
             createdByID: createdByID
         )
     }
@@ -68,39 +71,35 @@ extension TaskRecurrence {
         unit: RepeatUnit = .weeks
     ) -> TaskRecurrence {
         switch repeatOption {
-        case .none:
-            return .none
-        case .daily:
-            return TaskRecurrence(frequency: .daily)
-        case .weekly:
-            return TaskRecurrence(frequency: .weekly)
-        case .monthly:
-            return TaskRecurrence(frequency: .monthly)
-        case .yearly:
-            return TaskRecurrence(frequency: .yearly)
+        case .none: return .none
+        case .daily: return TaskRecurrence(frequency: .daily)
+        case .weekly: return TaskRecurrence(frequency: .weekly)
+        case .monthly: return TaskRecurrence(frequency: .monthly)
+        case .yearly: return TaskRecurrence(frequency: .yearly)
         case .custom:
-            return TaskRecurrence(
-                frequency: .custom,
-                interval: interval,
-                unit: unit.recurrenceUnit
-            )
+            return TaskRecurrence(frequency: .custom, interval: interval, unit: unit.recurrenceUnit)
         }
     }
 
     var repeatOption: RepeatOption {
         switch frequency {
-        case .none:
-            return .none
-        case .daily:
-            return .daily
-        case .weekly:
-            return .weekly
-        case .monthly:
-            return .monthly
-        case .yearly:
-            return .yearly
-        case .custom:
-            return .custom
+        case .none: return .none
+        case .daily: return .daily
+        case .weekly: return .weekly
+        case .monthly: return .monthly
+        case .yearly: return .yearly
+        case .custom: return .custom
+        }
+    }
+}
+
+private extension TaskRecurrenceUnit {
+    var repeatUnit: RepeatUnit {
+        switch self {
+        case .days: return .days
+        case .weeks: return .weeks
+        case .months: return .months
+        case .years: return .years
         }
     }
 }
@@ -108,10 +107,10 @@ extension TaskRecurrence {
 private extension RepeatUnit {
     var recurrenceUnit: TaskRecurrenceUnit {
         switch self {
-        case .days: .days
-        case .weeks: .weeks
-        case .months: .months
-        case .years: .years
+        case .days: return .days
+        case .weeks: return .weeks
+        case .months: return .months
+        case .years: return .years
         }
     }
 }

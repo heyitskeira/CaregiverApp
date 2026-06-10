@@ -20,6 +20,8 @@ struct TimelineTaskModel: Identifiable {
     var showDocumentIcon: Bool = false
     var taskNote: String = ""
     var repeatOption: RepeatOption = .none
+    var repeatInterval: Int = 1
+    var repeatUnit: RepeatUnit = .weeks
     var assigneeIDs: [UUID] = []
 
     init(
@@ -34,6 +36,8 @@ struct TimelineTaskModel: Identifiable {
         showDocumentIcon: Bool = false,
         taskNote: String = "",
         repeatOption: RepeatOption = .none,
+        repeatInterval: Int = 1,
+        repeatUnit: RepeatUnit = .weeks,
         assigneeIDs: [UUID] = []
     ) {
         self.id = id
@@ -47,6 +51,8 @@ struct TimelineTaskModel: Identifiable {
         self.showDocumentIcon = showDocumentIcon
         self.taskNote = taskNote
         self.repeatOption = repeatOption
+        self.repeatInterval = repeatInterval
+        self.repeatUnit = repeatUnit
         self.assigneeIDs = assigneeIDs
     }
 

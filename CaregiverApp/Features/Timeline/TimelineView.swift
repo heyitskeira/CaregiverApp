@@ -179,29 +179,65 @@ struct TimelineView: View {
     private var timelineScrollSection: some View {
         ScrollView {
             ZStack(alignment: .topLeading) {
-                VStack(spacing: gapBetweenTasks) {
-                    ForEach(filteredTasks.indices, id: \.self) { index in
-                        let task = filteredTasks[index]
-                        let height = taskHeight(for: task)
-                        TimelineTaskRow(
-                            task: task,
-                            isLast: index == filteredTasks.count - 1,
-                            rowHeight: height,
-                            onToggleComplete: {
-                                toggleTask(task)
-                            },
-                            onTap: {
-                                onTaskTapped?(task)
-                            }
-                        )
-                        .padding(.bottom, index == filteredTasks.count - 1 ? 120 : 0)
+                if filteredTasks.isEmpty {
+                    emptyDayState
+                        .frame(maxWidth: .infinity)
+                        .padding(.top, 40)
+                } else {
+                    VStack(spacing: gapBetweenTasks) {
+                        ForEach(filteredTasks.indices, id: \.self) { index in
+                            let task = filteredTasks[index]
+                            let height = taskHeight(for: task)
+                            TimelineTaskRow(
+                                task: task,
+                                isLast: index == filteredTasks.count - 1,
+                                rowHeight: height,
+                                onToggleComplete: {
+                                    toggleTask(task)
+                                },
+                                onTap: {
+                                    onTaskTapped?(task)
+                                }
+                            )
+                            .padding(.bottom, index == filteredTasks.count - 1 ? 120 : 0)
+                        }
+                    }
+                    .padding(.horizontal)
+
+                    if let offset = currentTimeOffset() {
+                        CurrentTimeIndicator(currentTime: currentTime)
+                            .offset(y: offset)
                     }
                 }
-                .padding(.horizontal)
+            }
+        }
+    }
 
-                if let offset = currentTimeOffset() {
-                    CurrentTimeIndicator(currentTime: currentTime)
-                        .offset(y: offset)
+    private var emptyDayState: some View {
+        let hasTasksOnOtherDays = tasks.contains { task in
+            !calendar.isDate(task.startDate, inSameDayAs: selectedDate)
+        }
+        let isToday = calendar.isDateInToday(selectedDate)
+
+        return ContentUnavailableView {
+            Label(
+                filter == .mine ? "No Tasks Assigned to You" : "No Tasks This Day",
+                systemImage: filter == .mine ? "person.crop.circle.badge.checkmark" : "calendar"
+            )
+        } description: {
+            if tasks.isEmpty {
+                Text("Tap + to create a task and assign a helper from your care group.")
+            } else if hasTasksOnOtherDays && !isToday {
+                Text("Tasks are scheduled on other days. Jump to today to see what's coming up.")
+            } else if filter == .mine {
+                Text("Nothing is assigned to you on this day. Try another date or check All Task.")
+            } else {
+                Text("No tasks are scheduled for this day.")
+            }
+        } actions: {
+            if hasTasksOnOtherDays && !isToday {
+                Button("Go to Today") {
+                    selectedDate = Date()
                 }
             }
         }

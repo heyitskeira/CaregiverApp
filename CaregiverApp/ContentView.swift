@@ -36,6 +36,8 @@ enum AppTab: String, CaseIterable {
 struct ContentView: View {
     @Environment(\.taskRepository) private var taskRepository
     @Environment(\.contactRepository) private var contactRepository
+    @Environment(\.scenePhase) private var scenePhase
+    @Environment(SessionStore.self) private var session
 
     @State private var selectedTab: AppTab = .allTask
     @State private var showTaskSheet = false
@@ -45,6 +47,7 @@ struct ContentView: View {
     @State private var tasks: [TimelineTaskModel] = []
     @State private var store: TimelineStore?
     @State private var reloadToken = UUID()
+    @State private var persistErrorMessage: String?
 
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -54,17 +57,16 @@ struct ContentView: View {
                         filter: .all,
                         tasks: $tasks,
                         selectedDate: $selectedDate,
+                        myTasksAssigneeID: session.currentContactID,
                         onTaskTapped: openTaskDetail,
                         onTaskStatusChanged: persistTaskStatus
                     )
                 }
             }
-            
+
             Tab(AppTab.logPage.title, systemImage: AppTab.logPage.icon, value: AppTab.logPage) {
                 NavigationStack {
-                    MainLogView(
-                        
-                    )
+                    MainLogView()
                 }
             }
 
@@ -74,6 +76,7 @@ struct ContentView: View {
                         filter: .mine,
                         tasks: $tasks,
                         selectedDate: $selectedDate,
+                        myTasksAssigneeID: session.currentContactID,
                         onTaskTapped: openTaskDetail,
                         onTaskStatusChanged: persistTaskStatus
                     )
@@ -98,22 +101,34 @@ struct ContentView: View {
         .task(id: reloadToken) {
             await reloadTasks()
         }
-        .sheet(isPresented: $showTaskSheet, onDismiss: {
-            reloadToken = UUID()
-        }) {
-            TaskSheetView(mode: .create) { timelineModel in
-                Task { await persistTimelineModel(timelineModel) }
+        .onAppear {
+            Task { await reloadTasks() }
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase == .active {
+                Task { await reloadTasks() }
             }
         }
-        .sheet(isPresented: $showDetailSheet, onDismiss: {
-            reloadToken = UUID()
-        }) {
+        .sheet(isPresented: $showTaskSheet) {
+            TaskSheetView(mode: .create) { timelineModel in
+                await persistTimelineModel(timelineModel)
+            }
+        }
+        .sheet(isPresented: $showDetailSheet) {
             TaskSheetView(
                 mode: taskSheetMode,
                 onUpdate: { timelineModel in
-                    Task { await persistTimelineModel(timelineModel, updating: true) }
+                    await persistTimelineModel(timelineModel, updating: true)
                 }
             )
+        }
+        .alert("Could Not Save Task", isPresented: Binding(
+            get: { persistErrorMessage != nil },
+            set: { if !$0 { persistErrorMessage = nil } }
+        )) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(persistErrorMessage ?? "")
         }
     }
 
@@ -133,8 +148,13 @@ struct ContentView: View {
         tasks = store?.tasks ?? []
     }
 
-    private func persistTimelineModel(_ timelineModel: TimelineTaskModel, updating: Bool = false) async {
-        let careTask = CareTask.from(timelineModel: timelineModel)
+    private func persistTimelineModel(_ timelineModel: TimelineTaskModel, updating: Bool = false) async -> Bool {
+        let careTask = CareTask.from(
+            timelineModel: timelineModel,
+            careTeamID: session.currentCareTeam.id,
+            patientID: session.currentCareTeam.id == SeedData.careTeamID ? SeedData.patientID : SeedData.patientID,
+            createdByID: session.currentUser.id
+        )
         do {
             if updating {
                 try await taskRepository.updateTask(careTask)
@@ -142,14 +162,20 @@ struct ContentView: View {
                 try await taskRepository.saveTask(careTask)
             }
             await reloadTasks()
+            return true
         } catch {
-            // Milestone 2: surface error to user
+            persistErrorMessage = "Your task changes could not be saved. Please try again."
+            return false
         }
     }
 
     private func persistTaskStatus(_ timelineModel: TimelineTaskModel) {
         Task {
-            let careTask = CareTask.from(timelineModel: timelineModel)
+            let careTask = CareTask.from(
+                timelineModel: timelineModel,
+                careTeamID: session.currentCareTeam.id,
+                createdByID: session.currentUser.id
+            )
             try? await taskRepository.updateTask(careTask)
         }
     }
@@ -157,6 +183,7 @@ struct ContentView: View {
 
 #Preview {
     ContentView()
+        .environment(SessionStore())
         .environment(\.contactRepository, AppDependencies.live.contactRepository)
         .environment(\.taskRepository, AppDependencies.live.taskRepository)
         .environment(\.patientRepository, AppDependencies.live.patientRepository)

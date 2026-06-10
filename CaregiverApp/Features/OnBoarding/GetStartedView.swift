@@ -95,8 +95,8 @@ struct GetStartedView: View {
                     JoinCareGroupView()
                 }
             }
-            .foregroundStyle(.black)
-            .padding(.vertical, 60)
+            .foregroundStyle(.primary)
+            .padding(.vertical, 32)
             Spacer()
         }
         .padding(.horizontal, 16)

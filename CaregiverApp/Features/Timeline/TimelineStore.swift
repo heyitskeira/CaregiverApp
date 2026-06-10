@@ -20,7 +20,10 @@ final class TimelineStore {
 
         do {
             let contacts = try await contactRepository.fetchContacts()
-            let contactsByID = Dictionary(uniqueKeysWithValues: contacts.map { ($0.id, $0) })
+            var contactsByID: [UUID: CareContact] = [:]
+            for contact in contacts {
+                contactsByID[contact.id] = contact
+            }
             let careTasks = try await taskRepository.fetchAllTasks()
             tasks = careTasks.map { $0.timelinePresentation(contactsByID: contactsByID) }
         } catch {

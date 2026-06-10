@@ -29,8 +29,8 @@ enum TaskSheetMode {
 
 struct TaskSheetView: View {
     var mode: TaskSheetMode
-    var onSave: ((TimelineTaskModel) -> Void)?
-    var onUpdate: ((TimelineTaskModel) -> Void)?
+    var onSave: ((TimelineTaskModel) async -> Bool)?
+    var onUpdate: ((TimelineTaskModel) async -> Bool)?
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.contactRepository) private var contactRepository
@@ -51,8 +51,8 @@ struct TaskSheetView: View {
 
     init(
         mode: TaskSheetMode = .create,
-        onSave: ((TimelineTaskModel) -> Void)? = nil,
-        onUpdate: ((TimelineTaskModel) -> Void)? = nil
+        onSave: ((TimelineTaskModel) async -> Bool)? = nil,
+        onUpdate: ((TimelineTaskModel) async -> Bool)? = nil
     ) {
         self.mode = mode
         self.onSave = onSave
@@ -73,6 +73,8 @@ struct TaskSheetView: View {
             _taskDate = State(initialValue: task.startDate)
             _taskEndDate = State(initialValue: task.endDate)
             _repeatOption = State(initialValue: task.repeatOption)
+            _repeatInterval = State(initialValue: task.repeatInterval)
+            _repeatUnit = State(initialValue: task.repeatUnit)
             _isEditing = State(initialValue: {
                 if case .edit = mode { return true }
                 return false
@@ -229,6 +231,10 @@ struct TaskSheetView: View {
                             taskDate = task.startDate
                             taskEndDate = task.endDate
                             repeatOption = task.repeatOption
+                            repeatInterval = task.repeatInterval
+                            repeatUnit = task.repeatUnit
+                            editingAssigneeIDs = task.assigneeIDs
+                            Task { await loadAssignedContacts() }
                             isEditing = false
                         } else {
                             dismiss()
@@ -240,7 +246,7 @@ struct TaskSheetView: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     if isEditing {
                         Button("Save") {
-                            saveTask()
+                            Task { await saveTask() }
                         }
                         .fontWeight(.semibold)
                         .foregroundStyle(.blue)
@@ -279,7 +285,10 @@ struct TaskSheetView: View {
     }
 
     private func loadAssignedContacts() async {
-        guard !editingAssigneeIDs.isEmpty else { return }
+        guard !editingAssigneeIDs.isEmpty else {
+            assignedContacts = []
+            return
+        }
         var loaded: [CareContact] = []
         for id in editingAssigneeIDs {
             if let contact = try? await contactRepository.contact(id: id) {
@@ -289,11 +298,11 @@ struct TaskSheetView: View {
         assignedContacts = loaded
     }
 
-    private func saveTask() {
+    private func saveTask() async {
         let assigneeIDs = assignedContacts.map(\.id)
         let initials = assignedContacts.first?.initials
 
-        var timelineModel = TimelineTaskModel(
+        let timelineModel = TimelineTaskModel(
             id: editingTaskId ?? UUID(),
             startDate: taskDate,
             endDate: taskEndDate,
@@ -303,15 +312,20 @@ struct TaskSheetView: View {
             state: assigneeIDs.isEmpty ? .pending : .assigned,
             taskNote: taskNote.trimmingCharacters(in: .whitespacesAndNewlines),
             repeatOption: repeatOption,
+            repeatInterval: repeatInterval,
+            repeatUnit: repeatUnit,
             assigneeIDs: assigneeIDs
         )
 
+        let saved: Bool
         if isCreateMode {
-            onSave?(timelineModel)
+            saved = await onSave?(timelineModel) ?? true
         } else {
-            onUpdate?(timelineModel)
+            saved = await onUpdate?(timelineModel) ?? true
         }
-        dismiss()
+        if saved {
+            dismiss()
+        }
     }
 }
 
