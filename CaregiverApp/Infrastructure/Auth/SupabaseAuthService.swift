@@ -27,7 +27,7 @@ final class SupabaseAuthService: AuthService {
             password: password,
             data: ["full_name": .string(name)]
         )
-        guard let user = response.user else { return }
+        let user = response.user
         // Build currentUser from sign-up data — the handle_new_user trigger creates
         // the profiles row asynchronously, so querying it immediately would race.
         currentUser = UserProfile(
