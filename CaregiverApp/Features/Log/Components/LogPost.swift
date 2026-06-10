@@ -6,12 +6,34 @@
 //
 
 import SwiftUI
+import Combine
 
 struct LogPost: View {
     
     let log: Log
+    let onDelete: () -> Void
+    
+    @State private var showingDeleteConfirmation = false
     
     @State private var hasAcknowledged = false
+    @State private var hasLiked = false
+    
+    @State private var relativeTime = ""
+
+    private let timer = Timer.publish(
+        every: 15,
+        on: .main,
+        in: .common
+    ).autoconnect()
+    
+    private func updateRelativeTime() {
+        relativeTime = log.timestamp.formatted(
+            .relative(
+                presentation: .named,
+                unitsStyle: .abbreviated
+            )
+        )
+    }
     
     var body: some View {
         HStack (alignment: .top, spacing: 8){
@@ -22,19 +44,51 @@ struct LogPost: View {
             VStack (alignment: .leading){
                 
                 HStack{
-                    Text(log.author.name)
-                        .font(.body)
-                        .fontWeight(.semibold)
+                    HStack{
+                        Text(log.author.name)
+                            .font(.body)
+                            .fontWeight(.semibold)
+                        
+                        Text(relativeTime)
+                            .font(.body)
+                            .opacity(0.5)
+                            .padding(.trailing)
+                            .onAppear {
+                                updateRelativeTime()
+                            }
+                            .onReceive(timer) { _ in
+                                updateRelativeTime()
+                            }
+                    }
                     
                     Spacer()
                     
-                    Text(log.timestamp.formatted(
-                        date: .omitted,
-                        time: .shortened)
-                    )
-                        .font(.caption)
-                        .opacity(0.5)
-                        .padding(.trailing)
+//                    Image(systemName: "ellipsis")
+//                        .font(.body)
+//                        .fontWeight(.semibold)
+                    
+                    Menu {
+                        Button(role: .destructive) {
+                            showingDeleteConfirmation = true
+                        } label: {
+                            Label("Delete Log", systemImage: "trash")
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis")
+                    }
+                    .alert(
+                        "Delete this log?",
+                        isPresented: $showingDeleteConfirmation
+                    ) {
+
+                        Button("Delete", role: .destructive) {
+                            onDelete()
+                        }
+
+                        Button("Cancel", role: .cancel) { }
+
+                    }
+                    
                 }
                 .padding(.bottom, 4)
                 
@@ -45,13 +99,13 @@ struct LogPost: View {
                     .padding(.trailing)
                 
                 if !log.images.isEmpty {
-
+                    
                     ScrollView(.horizontal, showsIndicators: false) {
-
+                        
                         HStack {
-
+                            
                             ForEach(log.images.indices, id: \.self) { index in
-
+                                
                                 Image(uiImage: log.images[index])
                                     .resizable()
                                     .scaledToFill()
@@ -64,21 +118,47 @@ struct LogPost: View {
                     }
                 }
                 
-                Button {
-                    hasAcknowledged.toggle()
-                } label: {
-
-                    Label(
-                        "3",
-                        systemImage:
-                            hasAcknowledged
+                HStack (spacing: 10){
+                    Button {
+                        hasLiked.toggle()
+                    } label: {
+                        
+                        Label(
+                            "3",
+                            systemImage:
+                                hasLiked
+                            ? "heart.fill"
+                            : "heart"
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .tint(.green)
+                    
+                    Button {
+                        hasAcknowledged.toggle()
+                    } label: {
+                        
+                        Label(
+                            "3",
+                            systemImage:
+                                hasAcknowledged
                             ? "eye.fill"
                             : "eye"
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .tint(.green)
+                    
+                    Spacer()
+                    
+                    Text(log.timestamp.formatted(
+                        date: .omitted,
+                        time: .shortened)
                     )
+                    .font(.body)
+                    .opacity(0.5)
                 }
-                .buttonStyle(.plain)
-                .tint(.green)
-                .padding(.top, 6)
+                .padding(.vertical, 4)
             }
         }
     }
@@ -91,12 +171,13 @@ struct LogPost: View {
         name: "Sarah Antoso",
         relationship: "Primary Caregiver"
     )
-
+    
     let sampleLog = Log(
         author: sampleContact,
         content: "Grandma suddenly coughed blood."
     )
-
-    LogPost(log: sampleLog)
-
+    
+    LogPost(log: sampleLog, onDelete: {})
+    
 }
+
