@@ -16,6 +16,13 @@ struct MainLogView: View {
     var body: some View {
         
         NavigationStack{
+            
+            Text("Logs")
+                .font(.largeTitle)
+                .bold()
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding()
+            
             Button {
                 showingAddLog = true
             } label:{
@@ -42,16 +49,53 @@ struct MainLogView: View {
             .buttonStyle(.glass)
             .padding(.vertical)
             
-            ScrollView {
-                LazyVStack {
-                    ForEach(logs) { log in
-                        LogPost(log: log)
-                        Divider()
-                            .padding(.vertical, 8)
+            if logs.isEmpty {
+
+                Spacer()
+
+                VStack(spacing: 10) {
+
+                    Image(systemName: "square.and.pencil")
+                        .font(.largeTitle)
+                        .foregroundStyle(.secondary)
+                        .fontWeight(.semibold)
+                        .opacity(0.4)
+
+                    VStack (spacing: 7){
+                        Text("No activity yet")
+                            .font(.headline)
+                            .foregroundStyle(.secondary)
+                            .fontWeight(.semibold)
+                            .opacity(0.5)
+                        
+                        Text("Updates from the care team will appear here — or add the first one yourself.")
+                            .frame(width: 280)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
+
+                }
+                .padding()
+
+                Spacer()
+                Spacer()
+
+            } else {
+
+                ScrollView {
+                    LazyVStack {
+                        ForEach(logs) { log in
+                            LogPost(log: log)
+
+                            Divider()
+                                .padding(.vertical, 8)
+                        }
                     }
                 }
+                .padding(.horizontal, 12)
+
             }
-            .padding(.horizontal, 12)
         }
         .sheet(isPresented: $showingAddLog) {
             AddLogSheetView { newLog in

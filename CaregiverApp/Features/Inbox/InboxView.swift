@@ -73,6 +73,7 @@ struct InboxView: View {
                 .foregroundStyle(.tint)
                 .background(
                     RoundedRectangle(
+                        
                         cornerRadius: 20,
                         style: .continuous
                     )
@@ -93,12 +94,18 @@ struct InboxView: View {
                 Spacer()
                 VStack(spacing: 8) {
                     Image(systemName: "tray")
-                        .font(.system(size: 40))
-                        .foregroundStyle(.gray.opacity(0.4))
-                    Text("No pending requests")
-                        .font(.subheadline)
+                        .font(.largeTitle)
                         .foregroundStyle(.secondary)
+                        .fontWeight(.semibold)
+                        .opacity(0.4)
+                    
+                    Text("No pending requests")
+                        .font(.headline)
+                        .foregroundStyle(.secondary)
+                        .fontWeight(.semibold)
+                        .opacity(0.5)
                 }
+                Spacer()
                 Spacer()
             } else {
                 ScrollView {
