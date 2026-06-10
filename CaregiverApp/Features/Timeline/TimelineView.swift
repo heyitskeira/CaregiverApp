@@ -1,20 +1,22 @@
 import SwiftUI
 import Combine
 
-enum TimelineFilter {
-    case all
-    case mine
+enum TimelineFilter: String, CaseIterable {
+    case all = "All Task"
+    case mine = "My Task"
 }
 
 struct TimelineView: View {
-    var filter: TimelineFilter = .all
     @Binding var tasks: [TimelineTaskModel]
     @Binding var selectedDate: Date
     var myTasksAssigneeID: UUID = SeedData.myTasksViewerContactID
     var onTaskTapped: ((TimelineTaskModel) -> Void)? = nil
     var onTaskStatusChanged: ((TimelineTaskModel) -> Void)? = nil
+    var onTaskDeleted: ((UUID) -> Void)? = nil
 
     @State private var currentTime = Date()
+    @State private var activeFilter: TimelineFilter = .all
+    @State private var showDatePickerSheet = false
     private let timer = Timer.publish(every: 30, on: .main, in: .common).autoconnect()
 
     private let pointsPerMinute: CGFloat = 1.2
@@ -32,11 +34,15 @@ struct TimelineView: View {
         }
 
         let filtered: [TimelineTaskModel]
-        switch filter {
+        switch activeFilter {
         case .all:
             filtered = dayTasks
         case .mine:
-            filtered = dayTasks.filter { $0.assigneeIDs.contains(myTasksAssigneeID) }
+            filtered = dayTasks.filter {
+                $0.primaryAssigneeID == myTasksAssigneeID
+                || $0.backupAssigneeID == myTasksAssigneeID
+                || $0.isRequested
+            }
         }
 
         return filtered.sorted { $0.startDate < $1.startDate }
@@ -54,13 +60,13 @@ struct TimelineView: View {
         let dayEnd = calendar.date(byAdding: .day, value: 1, to: dayStart)!
         guard now >= dayStart && now < dayEnd else { return nil }
 
-        var offset: CGFloat = 0
+        var offset: CGFloat = 8
 
         for (index, task) in filteredTasks.enumerated() {
             let height = taskHeight(for: task)
 
             if now < task.startDate {
-                return offset + 10
+                return offset
             }
 
             if now >= task.startDate && now <= task.endDate {
@@ -70,14 +76,10 @@ struct TimelineView: View {
                 return offset + height * fraction
             }
 
-            offset += height
-
-            if index < filteredTasks.count - 1 {
-                offset += gapBetweenTasks
-            }
+            offset += height + gapBetweenTasks
         }
 
-        return offset + 10
+        return offset
     }
 
     private func weekDates(around date: Date) -> [Date] {
@@ -91,156 +93,236 @@ struct TimelineView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            headerSection
-            weekCalendarSection
-            Divider().padding(.vertical, 16)
+            VStack(spacing: 0) {
+                headerSection
+                weekCalendarSection
+            }
+            .background(Color(.systemGroupedBackground))
+
+            Divider()
+
+            filterPillToggle
+                .padding(.top, 12)
             timelineScrollSection
         }
+        .background(Color(.systemBackground))
         .onReceive(timer) { _ in
             currentTime = Date()
+        }
+        .sheet(isPresented: $showDatePickerSheet) {
+            datePickerSheet
         }
     }
 
     private var headerSection: some View {
         HStack {
-            HStack(spacing: 8) {
-                Text(selectedDate.formatted(.dateTime.day().month(.wide)))
-                    .font(.title2)
-                    .fontWeight(.bold)
-                Text(selectedDate.formatted(.dateTime.year()))
-                    .font(.title2)
-                    .foregroundStyle(.gray)
-                Image(systemName: "chevron.right")
-                    .font(.title3)
-                    .fontWeight(.bold)
+            Button(action: { showDatePickerSheet = true }) {
+                HStack(spacing: 4) {
+                    Text(headerDateString)
+                        .font(.title2)
+                        .fontWeight(.bold)
+                        .foregroundStyle(Color(hex: 0x2051B9))
+
+                    Text(selectedDate.formatted(.dateTime.year()))
+                        .font(.title2)
+                        .fontWeight(.bold)
+                        .foregroundStyle(.primary)
+
+                    Image(systemName: "chevron.right")
+                        .font(.caption)
+                        .fontWeight(.bold)
+                        .foregroundStyle(.primary)
+                }
             }
+            .buttonStyle(.plain)
+
             Spacer()
 
             NavigationLink(destination: InboxView()) {
                 Image(systemName: "tray.fill")
-                    .font(.title2)
-                    .foregroundColor(.black)
+                    .font(.body)
+                    .foregroundColor(.primary)
                     .padding(12)
-                    .background(Color.gray.opacity(0.15))
+                    .background(Color(.secondarySystemBackground))
                     .clipShape(Circle())
                     .overlay(alignment: .topTrailing) {
                         Circle()
                             .fill(.red)
-                            .frame(width: 12, height: 12)
+                            .frame(width: 10, height: 10)
+                            .offset(x: 2, y: -2)
                     }
             }
         }
         .padding(.horizontal)
-        .padding(.top, 16)
+        .padding(.top, 8)
+    }
+
+    private var headerDateString: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "d MMMM"
+        return formatter.string(from: selectedDate)
+    }
+
+    private var datePickerSheet: some View {
+        NavigationStack {
+            DatePicker(
+                "Select Date",
+                selection: $selectedDate,
+                displayedComponents: .date
+            )
+            .datePickerStyle(.graphical)
+            .tint(Color(hex: 0x2051B9))
+            .padding()
+            .navigationTitle("Jump to Date")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") {
+                        showDatePickerSheet = false
+                    }
+                }
+            }
+        }
+        .presentationDetents([.medium])
     }
 
     private var weekCalendarSection: some View {
-        HStack {
+        HStack(spacing: 0) {
             let week = weekDates(around: selectedDate)
             let dayFormatter: DateFormatter = {
-                let formatter = DateFormatter()
-                formatter.dateFormat = "EEE"
-                return formatter
+                let f = DateFormatter()
+                f.dateFormat = "EEE"
+                return f
             }()
 
             ForEach(week, id: \.self) { day in
                 let isSelected = calendar.isDate(day, inSameDayAs: selectedDate)
-                let isToday = calendar.isDateInToday(day)
 
                 Button {
-                    selectedDate = day
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        selectedDate = day
+                    }
                 } label: {
-                    VStack(spacing: 8) {
+                    VStack(spacing: 6) {
                         Text(dayFormatter.string(from: day).uppercased())
-                            .font(.caption2)
-                            .fontWeight(.semibold)
-                            .foregroundStyle(.gray.opacity(0.8))
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(.gray)
 
                         Text("\(calendar.component(.day, from: day))")
-                            .font(.headline)
-                            .fontWeight(isSelected ? .bold : .semibold)
-                            .foregroundStyle(isSelected ? Color.accentColor : (isToday ? Color.accentColor.opacity(0.7) : .primary))
+                            .font(.system(size: 16, weight: isSelected ? .bold : .medium))
+                            .foregroundStyle(.primary)
                             .frame(width: 36, height: 36)
                             .background {
                                 if isSelected {
-                                    Circle().fill(Color.accentColor.opacity(0.15))
+                                    Circle().fill(Color(.systemGray5))
                                 }
                             }
                     }
+                    .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.plain)
-                if day != week.last { Spacer() }
             }
         }
-        .padding(.horizontal, 24)
+        .padding(.horizontal, 12)
         .padding(.top, 16)
     }
 
-    private var timelineScrollSection: some View {
-        ScrollView {
-            ZStack(alignment: .topLeading) {
-                if filteredTasks.isEmpty {
-                    emptyDayState
-                        .frame(maxWidth: .infinity)
-                        .padding(.top, 40)
-                } else {
-                    VStack(spacing: gapBetweenTasks) {
-                        ForEach(filteredTasks.indices, id: \.self) { index in
-                            let task = filteredTasks[index]
-                            let height = taskHeight(for: task)
-                            TimelineTaskRow(
-                                task: task,
-                                isLast: index == filteredTasks.count - 1,
-                                rowHeight: height,
-                                onToggleComplete: {
-                                    toggleTask(task)
-                                },
-                                onTap: {
-                                    onTaskTapped?(task)
-                                }
-                            )
-                            .padding(.bottom, index == filteredTasks.count - 1 ? 120 : 0)
-                        }
+    private var filterPillToggle: some View {
+        HStack(spacing: 0) {
+            ForEach(TimelineFilter.allCases, id: \.self) { tab in
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        activeFilter = tab
                     }
-                    .padding(.horizontal)
+                } label: {
+                    Text(tab.rawValue)
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                        .foregroundStyle(.primary)
+                        .padding(.vertical, 10)
+                        .frame(maxWidth: .infinity)
+                        .background {
+                            if activeFilter == tab {
+                                Capsule().fill(Color(.systemBackground))
+                                    .shadow(color: .black.opacity(0.08), radius: 2, x: 0, y: 1)
+                            }
+                        }
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(4)
+        .background(Color(.systemGray6))
+        .clipShape(Capsule())
+        .padding(.horizontal)
+    }
 
-                    if let offset = currentTimeOffset() {
-                        CurrentTimeIndicator(currentTime: currentTime)
-                            .offset(y: offset)
+    private var timelineScrollSection: some View {
+        Group {
+            if filteredTasks.isEmpty {
+                emptyStateView
+            } else {
+                ScrollView {
+                    ZStack(alignment: .topLeading) {
+                        VStack(spacing: 0) {
+                            ForEach(filteredTasks.indices, id: \.self) { index in
+                                let task = filteredTasks[index]
+                                let height = taskHeight(for: task)
+
+                                TimelineTaskRow(
+                                    task: task,
+                                    isLast: index == filteredTasks.count - 1,
+                                    rowHeight: height,
+                                    onToggleComplete: {
+                                        toggleTask(task)
+                                    },
+                                    onAccept: {
+                                        acceptTask(task)
+                                    },
+                                    onDecline: {
+                                        declineTask(task)
+                                    },
+                                    onTap: {
+                                        onTaskTapped?(task)
+                                    }
+                                )
+                                .padding(.bottom, index == filteredTasks.count - 1 ? 120 : gapBetweenTasks)
+                            }
+                        }
+                        .padding(.horizontal)
+                        .padding(.top, 8)
+
+                        if let offset = currentTimeOffset() {
+                            CurrentTimeIndicator(currentTime: currentTime)
+                                .offset(y: offset)
+                        }
                     }
                 }
             }
         }
     }
 
-    private var emptyDayState: some View {
-        let hasTasksOnOtherDays = tasks.contains { task in
-            !calendar.isDate(task.startDate, inSameDayAs: selectedDate)
-        }
-        let isToday = calendar.isDateInToday(selectedDate)
+    private var emptyStateView: some View {
+        VStack(spacing: 12) {
+            Spacer()
 
-        return ContentUnavailableView {
-            Label(
-                filter == .mine ? "No Tasks Assigned to You" : "No Tasks This Day",
-                systemImage: filter == .mine ? "person.crop.circle.badge.checkmark" : "calendar"
-            )
-        } description: {
-            if tasks.isEmpty {
-                Text("Tap + to create a task and assign a helper from your care group.")
-            } else if hasTasksOnOtherDays && !isToday {
-                Text("Tasks are scheduled on other days. Jump to today to see what's coming up.")
-            } else if filter == .mine {
-                Text("Nothing is assigned to you on this day. Try another date or check All Task.")
-            } else {
-                Text("No tasks are scheduled for this day.")
-            }
-        } actions: {
-            if hasTasksOnOtherDays && !isToday {
-                Button("Go to Today") {
-                    selectedDate = Date()
-                }
-            }
+            Image(systemName: "clipboard")
+                .font(.system(size: 60))
+                .foregroundStyle(.gray.opacity(0.4))
+
+            Text("No task yet")
+                .font(.title3)
+                .fontWeight(.semibold)
+                .foregroundStyle(.primary)
+
+            Text("Create your first task by clicking\nthe + button")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+
+            Spacer()
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private func toggleTask(_ task: TimelineTaskModel) {
@@ -253,6 +335,25 @@ struct TimelineView: View {
             tasks[index].state = .completed
         }
         onTaskStatusChanged?(tasks[index])
+    }
+
+    private func acceptTask(_ task: TimelineTaskModel) {
+        guard let index = tasks.firstIndex(where: { $0.id == task.id }) else { return }
+        tasks[index].state = .assigned
+        tasks[index].isRecentlyAccepted = true
+        tasks[index].isRequested = false
+        onTaskStatusChanged?(tasks[index])
+    }
+
+    private func declineTask(_ task: TimelineTaskModel) {
+        guard let index = tasks.firstIndex(where: { $0.id == task.id }) else { return }
+        tasks[index].isRequested = false
+        onTaskStatusChanged?(tasks[index])
+    }
+
+    private func deleteTask(_ task: TimelineTaskModel) {
+        tasks.removeAll { $0.id == task.id }
+        onTaskDeleted?(task.id)
     }
 }
 
@@ -285,20 +386,21 @@ struct CurrentTimeIndicator: View {
     }
 }
 
+extension Color {
+    init(hex: UInt, opacity: Double = 1.0) {
+        self.init(
+            red: Double((hex >> 16) & 0xFF) / 255.0,
+            green: Double((hex >> 8) & 0xFF) / 255.0,
+            blue: Double(hex & 0xFF) / 255.0,
+            opacity: opacity
+        )
+    }
+}
+
 #Preview {
     @Previewable @State var selectedDate = Date()
-    @Previewable @State var tasks: [TimelineTaskModel] = [
-        TimelineTaskModel(
-            startDate: TimelineTaskModel.makeDate(hour: 6, minute: 0),
-            endDate: TimelineTaskModel.makeDate(hour: 6, minute: 15),
-            title: "Give Meds",
-            initials: "L",
-            hasRepeatIcon: true,
-            state: .assigned,
-            assigneeIDs: [SeedData.lilyID]
-        )
-    ]
+    @Previewable @State var tasks: [TimelineTaskModel] = []
     NavigationStack {
-        TimelineView(filter: .all, tasks: $tasks, selectedDate: $selectedDate)
+        TimelineView(tasks: $tasks, selectedDate: $selectedDate)
     }
 }

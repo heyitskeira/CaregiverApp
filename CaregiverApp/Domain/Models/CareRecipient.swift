@@ -10,6 +10,8 @@ struct CareRecipient: Identifiable, Hashable, Codable, Sendable {
     var allergies: String
     var favoriteFood: String
     var healthNotes: String
+    var createdAt: Date
+    var updatedAt: Date
 
     var ageInYears: Int {
         let calendar = Calendar.current
@@ -32,7 +34,9 @@ struct CareRecipient: Identifiable, Hashable, Codable, Sendable {
         bloodType: String,
         allergies: String = "",
         favoriteFood: String = "",
-        healthNotes: String = ""
+        healthNotes: String = "",
+        createdAt: Date = .now,
+        updatedAt: Date = .now
     ) {
         self.id = id
         self.careTeamID = careTeamID
@@ -43,5 +47,7 @@ struct CareRecipient: Identifiable, Hashable, Codable, Sendable {
         self.allergies = allergies
         self.favoriteFood = favoriteFood
         self.healthNotes = healthNotes
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
     }
 }

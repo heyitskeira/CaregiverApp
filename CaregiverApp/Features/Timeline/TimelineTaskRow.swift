@@ -20,9 +20,11 @@ struct TimelineTaskModel: Identifiable {
     var showDocumentIcon: Bool = false
     var taskNote: String = ""
     var repeatOption: RepeatOption = .none
-    var repeatInterval: Int = 1
-    var repeatUnit: RepeatUnit = .weeks
-    var assigneeIDs: [UUID] = []
+    var primaryAssigneeID: UUID?
+    var backupAssigneeID: UUID?
+    var isRequested: Bool = false
+    var isRecentlyAccepted: Bool = false
+    var attachments: [TaskAttachment] = []
 
     init(
         id: UUID = UUID(),
@@ -36,9 +38,11 @@ struct TimelineTaskModel: Identifiable {
         showDocumentIcon: Bool = false,
         taskNote: String = "",
         repeatOption: RepeatOption = .none,
-        repeatInterval: Int = 1,
-        repeatUnit: RepeatUnit = .weeks,
-        assigneeIDs: [UUID] = []
+        primaryAssigneeID: UUID? = nil,
+        backupAssigneeID: UUID? = nil,
+        isRequested: Bool = false,
+        isRecentlyAccepted: Bool = false,
+        attachments: [TaskAttachment] = []
     ) {
         self.id = id
         self.startDate = startDate
@@ -51,9 +55,12 @@ struct TimelineTaskModel: Identifiable {
         self.showDocumentIcon = showDocumentIcon
         self.taskNote = taskNote
         self.repeatOption = repeatOption
-        self.repeatInterval = repeatInterval
-        self.repeatUnit = repeatUnit
-        self.assigneeIDs = assigneeIDs
+        self.primaryAssigneeID = primaryAssigneeID
+        self.backupAssigneeID = backupAssigneeID
+        self.isRequested = isRequested
+        self.isRecentlyAccepted = isRecentlyAccepted
+        self.attachments = attachments
+        self.showDocumentIcon = !attachments.isEmpty
     }
 
     var isCompleted: Bool { state == .completed }
@@ -90,6 +97,9 @@ struct TimelineTaskModel: Identifiable {
     }
 
     var nodeColor: Color {
+        if isRecentlyAccepted {
+            return .orange
+        }
         switch state {
         case .completed:
             return .gray.opacity(0.45)
@@ -130,6 +140,8 @@ struct TimelineTaskRow: View {
     let isLast: Bool
     var rowHeight: CGFloat = 80
     var onToggleComplete: (() -> Void)? = nil
+    var onAccept: (() -> Void)? = nil
+    var onDecline: (() -> Void)? = nil
     var onTap: (() -> Void)? = nil
 
     private var rowOpacity: Double {
@@ -146,39 +158,7 @@ struct TimelineTaskRow: View {
                 .opacity(rowOpacity)
 
             VStack(spacing: 0) {
-                Group {
-                    if let initials = task.initials {
-                        if task.isPending {
-                            Text(initials)
-                                .font(.title3)
-                                .fontWeight(.bold)
-                                .foregroundColor(.gray)
-                                .frame(width: 50, height: max(50, rowHeight - 10))
-                                .background(Color.white)
-                                .clipShape(Capsule())
-                                .overlay(
-                                    Capsule()
-                                        .stroke(style: StrokeStyle(lineWidth: 2, dash: [5, 4]))
-                                        .foregroundColor(.gray.opacity(0.6))
-                                )
-                        } else {
-                            Text(initials)
-                                .font(.title3)
-                                .fontWeight(.bold)
-                                .foregroundColor(.white)
-                                .frame(width: 50, height: task.isCompleted ? 50 : max(50, rowHeight - 10))
-                                .background(task.nodeColor)
-                                .clipShape(Capsule())
-                        }
-                    } else if let icon = task.iconSystemName {
-                        Image(systemName: icon)
-                            .font(.title2)
-                            .foregroundColor(.white)
-                            .frame(width: 50, height: max(50, rowHeight - 10))
-                            .background(task.nodeColor)
-                            .clipShape(Capsule())
-                    }
-                }
+                nodeView
 
                 if !isLast {
                     Rectangle()
@@ -218,46 +198,98 @@ struct TimelineTaskRow: View {
             }
             .padding(.top, 10)
             .opacity(rowOpacity)
-            .contentShape(Rectangle())
-            .onTapGesture { onTap?() }
 
             Spacer()
 
             if task.isPending {
-                HStack(spacing: 12) {
-                    Button(action: { onToggleComplete?() }) {
-                        Image(systemName: "checkmark.circle.fill")
-                            .font(.title2)
-                            .foregroundColor(.green)
+                HStack(spacing: 8) {
+                    Button(action: { onDecline?() }) {
+                        Image(systemName: "xmark")
+                            .font(.body.weight(.medium))
+                            .foregroundColor(.gray)
+                            .frame(width: 32, height: 32)
+                            .overlay(
+                                Circle()
+                                    .stroke(Color.gray.opacity(0.4), lineWidth: 1.5)
+                            )
                     }
 
-                    Button(action: {}) {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.title2)
-                            .foregroundColor(.red)
+                    Button(action: { onAccept?() }) {
+                        Image(systemName: "checkmark")
+                            .font(.body.weight(.medium))
+                            .foregroundColor(Color(hex: 0x2051B9))
+                            .frame(width: 32, height: 32)
+                            .overlay(
+                                Circle()
+                                    .stroke(Color(hex: 0x2051B9), lineWidth: 1.5)
+                            )
                     }
                 }
                 .padding(.top, 10)
-            } else {
+            } else if !task.isCompleted {
                 Button(action: { onToggleComplete?() }) {
-                    if task.isCompleted {
-                        Image(systemName: "checkmark.circle.fill")
-                            .font(.title3)
-                            .foregroundStyle(.gray.opacity(0.5))
-                    } else {
-                        Circle()
-                            .stroke(
-                                task.isOngoing
-                                    ? Color(red: 0.13, green: 0.55, blue: 0.13)
-                                    : Color(red: 0.1, green: 0.2, blue: 0.4),
-                                lineWidth: 3
-                            )
-                            .frame(width: 22, height: 22)
-                    }
+                    Circle()
+                        .stroke(
+                            task.isOngoing
+                                ? Color(red: 0.13, green: 0.55, blue: 0.13)
+                                : Color(red: 0.1, green: 0.2, blue: 0.4),
+                            lineWidth: 2
+                        )
+                        .frame(width: 24, height: 24)
                 }
                 .padding(.top, 10)
             }
         }
         .frame(minHeight: rowHeight)
+        .contentShape(Rectangle())
+        .onTapGesture { onTap?() }
+    }
+
+    @ViewBuilder
+    private var nodeView: some View {
+        let height = max(50, rowHeight - 10)
+
+        if task.isPending {
+            Group {
+                if let initials = task.initials {
+                    Text(initials)
+                        .font(.title3)
+                        .fontWeight(.bold)
+                } else if let icon = task.iconSystemName {
+                    Image(systemName: icon)
+                        .font(.title2)
+                } else {
+                    Image(systemName: "checklist")
+                        .font(.title2)
+                }
+            }
+            .foregroundColor(.gray)
+            .frame(width: 50, height: height)
+            .background(Color(.systemBackground))
+            .clipShape(Capsule())
+            .overlay(
+                Capsule()
+                    .stroke(style: StrokeStyle(lineWidth: 2, dash: [5, 4]))
+                    .foregroundColor(.gray.opacity(0.6))
+            )
+        } else {
+            Group {
+                if let initials = task.initials {
+                    Text(initials)
+                        .font(.title3)
+                        .fontWeight(.bold)
+                } else if let icon = task.iconSystemName {
+                    Image(systemName: icon)
+                        .font(.title2)
+                } else {
+                    Image(systemName: "checklist")
+                        .font(.title2)
+                }
+            }
+            .foregroundColor(.white)
+            .frame(width: 50, height: height)
+            .background(task.nodeColor)
+            .clipShape(Capsule())
+        }
     }
 }

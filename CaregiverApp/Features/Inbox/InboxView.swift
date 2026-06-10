@@ -1,265 +1,273 @@
 import SwiftUI
 
-struct InboxItem: Identifiable {
-    let id: UUID
-    let requestID: UUID
-    let taskTitle: String
-    let scheduledAt: Date
-    let durationMinutes: Int
-    let requesterName: String
-    let requesterInitials: String
-}
-
-@Observable
-@MainActor
-final class InboxStore {
-    private(set) var items: [InboxItem] = []
-    private(set) var isLoading = false
-    var errorMessage: String?
-
-    func load(
-        taskRequestRepository: any TaskRequestRepository,
-        taskRepository: any TaskRepository,
-        contactRepository: any ContactRepository
-    ) async {
-        isLoading = true
-        defer { isLoading = false }
-        errorMessage = nil
-        do {
-            let requests = try await taskRequestRepository.fetchPendingRequests()
-            let tasks = try await taskRepository.fetchAllTasks()
-            let contacts = try await contactRepository.fetchContacts()
-            let tasksByID = Dictionary(uniqueKeysWithValues: tasks.map { ($0.id, $0) })
-            let contactsByID = Dictionary(uniqueKeysWithValues: contacts.map { ($0.id, $0) })
-            items = requests.compactMap { request -> InboxItem? in
-                guard let task = tasksByID[request.taskID],
-                      let requester = contactsByID[request.requesterID] else { return nil }
-                return InboxItem(
-                    id: request.id,
-                    requestID: request.id,
-                    taskTitle: task.title,
-                    scheduledAt: task.scheduledAt,
-                    durationMinutes: task.durationMinutes,
-                    requesterName: requester.name,
-                    requesterInitials: requester.initials
-                )
-            }
-        } catch {
-            errorMessage = "Could not load inbox."
-        }
-    }
-
-    func accept(
-        _ item: InboxItem,
-        taskRequestRepository: any TaskRequestRepository
-    ) async {
-        do {
-            try await taskRequestRepository.accept(item.requestID)
-            items.removeAll { $0.id == item.id }
-        } catch {
-            errorMessage = "Could not accept request."
-        }
-    }
-
-    func decline(
-        _ item: InboxItem,
-        taskRequestRepository: any TaskRequestRepository
-    ) async {
-        do {
-            try await taskRequestRepository.decline(item.requestID)
-            items.removeAll { $0.id == item.id }
-        } catch {
-            errorMessage = "Could not decline request."
-        }
-    }
-
-    func acceptAll(taskRequestRepository: any TaskRequestRepository) async {
-        do {
-            try await taskRequestRepository.acceptAll()
-            items.removeAll()
-        } catch {
-            errorMessage = "Could not accept all requests."
-        }
-    }
-}
-
 struct InboxView: View {
-    @Environment(\.dismiss) private var dismiss
-    @Environment(\.taskRequestRepository) private var taskRequestRepository
-    @Environment(\.taskRepository) private var taskRepository
-    @Environment(\.contactRepository) private var contactRepository
 
-    @State private var store = InboxStore()
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.taskRepository) private var taskRepository
+
+    @State private var requests: [TaskRequest] = []
+    @State private var tasksByID: [UUID: CareTask] = [:]
+    @State private var isLoading = true
+
+    private var displayDate: String {
+        if Calendar.current.isDateInToday(Date()) {
+            return "Today"
+        }
+        return Date().formatted(
+            .dateTime
+                .day()
+                .month(.wide)
+                .year()
+        )
+    }
 
     var body: some View {
         VStack(spacing: 0) {
+
+            // Header
             HStack {
-                Button { dismiss() } label: {
+                Button {
+                    dismiss()
+                } label: {
                     Image(systemName: "chevron.left")
-                        .font(.title3).padding()
-                        .background(Color.white).clipShape(Circle())
-                        .shadow(color: .black.opacity(0.05), radius: 5, x: 0, y: 2)
+                        .font(.title3)
+                        .padding()
+                        .background(Color.white)
+                        .clipShape(Circle())
+                        .shadow(
+                            color: .black.opacity(0.05),
+                            radius: 5,
+                            x: 0,
+                            y: 2
+                        )
                 }
+
                 Spacer()
             }
-            .padding(.horizontal).padding(.top, 10)
+            .padding(.horizontal)
+            .padding(.top, 10)
 
             HStack {
-                Text("Inbox").font(.largeTitle).fontWeight(.bold)
+                Text("Inbox")
+                    .font(.largeTitle)
+                    .fontWeight(.bold)
+
                 Spacer()
             }
-            .padding(.horizontal).padding(.top, 10)
+            .padding(.horizontal)
+            .padding(.vertical, 10)
 
-            Divider().padding(.vertical, 10)
+            HStack {
+                Text("\(requests.count) task request\(requests.count == 1 ? "" : "s")")
+                    .fontWeight(.semibold)
 
-            if store.isLoading {
+                Spacer()
+
+                Button("Accept All") {
+                    acceptAll()
+                }
+                .font(.subheadline)
+                .fontWeight(.medium)
+                .padding(.horizontal, 36)
+                .padding(.vertical, 8)
+                .foregroundStyle(.tint)
+                .background(
+                    RoundedRectangle(
+                        cornerRadius: 20,
+                        style: .continuous
+                    )
+                    .stroke(.tint, lineWidth: 2)
+                )
+            }
+            .padding(.horizontal)
+            .padding(.bottom, 14)
+
+            Divider()
+                .padding(.bottom, 14)
+
+            if isLoading {
                 Spacer()
                 ProgressView()
                 Spacer()
-            } else if store.items.isEmpty {
+            } else if requests.isEmpty {
                 Spacer()
-                ContentUnavailableView(
-                    "No Task Requests",
-                    systemImage: "tray",
-                    description: Text("When care group members volunteer for tasks, they'll appear here.")
-                )
+                VStack(spacing: 8) {
+                    Image(systemName: "tray")
+                        .font(.system(size: 40))
+                        .foregroundStyle(.gray.opacity(0.4))
+                    Text("No pending requests")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
                 Spacer()
             } else {
                 ScrollView {
-                    VStack(spacing: 16) {
-                        HStack {
-                            Image(systemName: "hand.wave.fill")
-                                .foregroundColor(.white)
-                                .frame(width: 40, height: 40)
-                                .background(Color.orange.opacity(0.8))
-                                .clipShape(Circle())
+                    VStack(alignment: .leading, spacing: 16) {
+                        Text(displayDate)
+                            .font(.body)
+                            .fontWeight(.bold)
+                            .padding(.horizontal, 16)
 
-                            Text("\(store.items.count) task request\(store.items.count == 1 ? "" : "s")")
-                                .font(.headline).fontWeight(.bold)
-
-                            Spacer()
-
-                            Button("Accept All") {
-                                Task { await store.acceptAll(taskRequestRepository: taskRequestRepository) }
+                        ForEach(requests) { request in
+                            if let task = tasksByID[request.taskID] {
+                                InboxRow(
+                                    task: task,
+                                    onAccept: {
+                                        acceptRequest(request)
+                                    },
+                                    onDecline: {
+                                        declineRequest(request)
+                                    }
+                                )
                             }
-                            .font(.subheadline).fontWeight(.semibold)
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 16).padding(.vertical, 8)
-                            .background(Color(red: 0.1, green: 0.2, blue: 0.4))
-                            .clipShape(Capsule())
-                        }
-                        .padding(.horizontal).padding(.bottom, 8)
-
-                        ForEach(store.items) { item in
-                            InboxRow(
-                                item: item,
-                                onAccept: {
-                                    Task { await store.accept(item, taskRequestRepository: taskRequestRepository) }
-                                },
-                                onDecline: {
-                                    Task { await store.decline(item, taskRequestRepository: taskRequestRepository) }
-                                }
-                            )
                         }
                     }
                 }
             }
         }
-        .navigationBarHidden(true)
+        .navigationBarBackButtonHidden()
         .task {
-            await store.load(
-                taskRequestRepository: taskRequestRepository,
-                taskRepository: taskRepository,
-                contactRepository: contactRepository
-            )
+            await loadRequests()
         }
-        .refreshable {
-            await store.load(
-                taskRequestRepository: taskRequestRepository,
-                taskRepository: taskRepository,
-                contactRepository: contactRepository
-            )
+    }
+
+    private func loadRequests() async {
+        isLoading = true
+        defer { isLoading = false }
+
+        do {
+            requests = try await taskRepository.fetchAllPendingRequests()
+            let allTasks = try await taskRepository.fetchAllTasks()
+            tasksByID = Dictionary(uniqueKeysWithValues: allTasks.map { ($0.id, $0) })
+        } catch {
+            requests = []
         }
-        .alert("Error", isPresented: Binding(
-            get: { store.errorMessage != nil },
-            set: { if !$0 { store.errorMessage = nil } }
-        )) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text(store.errorMessage ?? "")
+    }
+
+    private func acceptRequest(_ request: TaskRequest) {
+        Task {
+            try? await taskRepository.updateRequestStatus(id: request.id, status: .accepted)
+            // Add an assignment for the requester
+            let assignment = TaskAssignment(
+                taskID: request.taskID,
+                assigneeID: request.requesterID,
+                assignedByID: request.requesterID
+            )
+            try? await taskRepository.addAssignment(assignment)
+            // Update task status to assigned
+            if var task = tasksByID[request.taskID] {
+                task.status = .assigned
+                try? await taskRepository.updateTask(task)
+            }
+            // Remove from local list
+            withAnimation {
+                requests.removeAll { $0.id == request.id }
+            }
+        }
+    }
+
+    private func declineRequest(_ request: TaskRequest) {
+        Task {
+            try? await taskRepository.updateRequestStatus(id: request.id, status: .declined)
+            withAnimation {
+                requests.removeAll { $0.id == request.id }
+            }
+        }
+    }
+
+    private func acceptAll() {
+        for request in requests {
+            acceptRequest(request)
         }
     }
 }
 
 struct InboxRow: View {
-    let item: InboxItem
-    var onAccept: () -> Void
-    var onDecline: () -> Void
 
-    private var timeRange: String {
-        let start = item.scheduledAt.formatted(.dateTime.hour().minute())
-        let end = Calendar.current.date(byAdding: .minute, value: item.durationMinutes, to: item.scheduledAt)!
-            .formatted(.dateTime.hour().minute())
-        let hours = item.durationMinutes / 60
-        let mins = item.durationMinutes % 60
-        let durationStr = hours > 0
-            ? "\(hours)h\(mins > 0 ? " \(mins)m" : "")"
-            : "\(mins)m"
-        return "\(start)–\(end) (\(durationStr))"
+    let task: CareTask
+
+    let onAccept: () -> Void
+    let onDecline: () -> Void
+
+    private var endTime: Date {
+        task.scheduledAt.addingTimeInterval(Double(task.durationMinutes * 60))
+    }
+
+    private var timeText: String {
+        "\(task.scheduledAt.formatted(date: .omitted, time: .shortened)) - \(endTime.formatted(date: .omitted, time: .shortened))"
+    }
+
+    private var durationText: String {
+        if task.durationMinutes >= 60 {
+            let hours = Double(task.durationMinutes) / 60
+            return "\(hours.formatted()) hr"
+        }
+        return "\(task.durationMinutes) min"
     }
 
     var body: some View {
-        HStack(spacing: 12) {
-            ZStack(alignment: .bottomTrailing) {
-                ZStack {
-                    Circle().fill(Color.accentColor.opacity(0.15)).frame(width: 50, height: 50)
-                    Text(item.requesterInitials)
-                        .font(.headline.bold())
-                        .foregroundColor(.accentColor)
-                }
-                Image(systemName: "hand.raised.fill")
-                    .font(.caption2).foregroundColor(.white)
-                    .padding(4)
-                    .background(Color.orange.opacity(0.8))
+        VStack(spacing: 0) {
+            HStack(spacing: 8) {
+                Image(systemName: "hand.wave")
+                    .font(.title2)
+                    .foregroundColor(.white)
+                    .padding(10)
+                    .background(.orange.opacity(0.65))
                     .clipShape(Circle())
-                    .offset(x: 4, y: 4)
-            }
 
-            VStack(alignment: .leading, spacing: 4) {
-                Text(item.taskTitle).font(.headline).fontWeight(.semibold)
-                Text(item.scheduledAt.formatted(.dateTime.day().month(.wide).year()))
-                    .font(.subheadline)
-                HStack(spacing: 4) {
-                    Image(systemName: "clock").foregroundColor(.orange.opacity(0.8))
-                    Text(timeRange).foregroundColor(.gray)
-                }
-                .font(.caption)
-                Text("Requested by \(item.requesterName)")
-                    .font(.caption).foregroundStyle(.secondary)
-            }
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(task.title)
+                        .font(.headline)
+                        .fontWeight(.semibold)
 
-            Spacer()
+                    HStack(spacing: 4) {
+                        Image(systemName: "clock")
+                            .font(.caption)
+                            .foregroundColor(.gray)
 
-            HStack(spacing: 12) {
-                Button(action: onAccept) {
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(.title2).foregroundColor(.green)
+                        Text("\(timeText) (\(durationText))")
+                            .font(.caption)
+                            .foregroundColor(.gray)
+                    }
                 }
-                Button(action: onDecline) {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.title2).foregroundColor(.red)
+
+                Spacer()
+
+                HStack(spacing: 8) {
+                    // Gray X (decline)
+                    Button(action: onDecline) {
+                        Image(systemName: "xmark")
+                            .font(.body.weight(.medium))
+                            .foregroundColor(.gray)
+                            .frame(width: 32, height: 32)
+                            .overlay(
+                                Circle()
+                                    .stroke(Color.gray.opacity(0.4), lineWidth: 1.5)
+                            )
+                    }
+
+                    // Blue checkmark (accept)
+                    Button(action: onAccept) {
+                        Image(systemName: "checkmark")
+                            .font(.body.weight(.medium))
+                            .foregroundColor(Color(hex: 0x2051B9))
+                            .frame(width: 32, height: 32)
+                            .overlay(
+                                Circle()
+                                    .stroke(Color(hex: 0x2051B9), lineWidth: 1.5)
+                            )
+                    }
                 }
             }
+            .padding(.horizontal)
+
+            Divider()
+                .padding(.leading, 70)
         }
-        .padding(.horizontal)
-
-        Divider().padding(.leading, 70)
     }
 }
 
 #Preview {
     InboxView()
-        .environment(\.taskRequestRepository, AppDependencies.live.taskRequestRepository)
         .environment(\.taskRepository, AppDependencies.live.taskRepository)
-        .environment(\.contactRepository, AppDependencies.live.contactRepository)
 }

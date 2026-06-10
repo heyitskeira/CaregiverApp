@@ -7,7 +7,7 @@ import SwiftUI
 
 struct MainLogView: View {
     @Environment(\.logRepository) private var logRepository
-    @Environment(SessionStore.self) private var session
+    @Environment(\.authService) private var authService
 
     @State private var showingAddLog = false
     @State private var logs: [Log] = []
@@ -66,7 +66,7 @@ struct MainLogView: View {
             HStack {
                 Image(systemName: "person.crop.circle.fill").font(.largeTitle)
                 VStack(alignment: .leading) {
-                    Text(session.currentUser.name)
+                    Text(authService.currentUser?.name ?? "Caregiver")
                         .font(.body).fontWeight(.semibold)
                     Text("Anything to let others know?")
                         .font(.subheadline).opacity(0.5)
@@ -89,5 +89,5 @@ struct MainLogView: View {
 #Preview {
     MainLogView()
         .environment(\.logRepository, AppDependencies.live.logRepository)
-        .environment(SessionStore())
+        .environment(\.authService, AppDependencies.live.authService)
 }

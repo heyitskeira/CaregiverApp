@@ -1,32 +1,31 @@
 import Foundation
 
-enum CaregiverRole: String, Codable, Sendable, CaseIterable {
-    case primaryCaregiver = "primary_caregiver"
-    case helper
-}
-
-/// Signed-in app user. Maps to `auth.users` in Supabase via matching UUID.
+/// Signed-in app user. Maps to the `profiles` table in Supabase.
+/// Role is determined by `care_team_members`, not stored here.
 struct UserProfile: Identifiable, Hashable, Codable, Sendable {
     let id: UUID
     var name: String
     var phone: String
     var email: String
-    var role: CaregiverRole
     var avatarURL: String?
+    var createdAt: Date
+    var updatedAt: Date
 
     init(
         id: UUID = UUID(),
         name: String,
         phone: String = "",
         email: String = "",
-        role: CaregiverRole = .helper,
-        avatarURL: String? = nil
+        avatarURL: String? = nil,
+        createdAt: Date = .now,
+        updatedAt: Date = .now
     ) {
         self.id = id
         self.name = name
         self.phone = phone
         self.email = email
-        self.role = role
         self.avatarURL = avatarURL
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
     }
 }

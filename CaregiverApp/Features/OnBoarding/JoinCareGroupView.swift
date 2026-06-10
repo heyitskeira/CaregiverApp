@@ -1,18 +1,16 @@
 import SwiftUI
 
 struct JoinCareGroupView: View {
-    @Environment(SessionStore.self) private var session
-
     @State private var code: [String] = Array(repeating: "", count: 6)
     @FocusState private var focusedIndex: Int?
     @State private var pasteAlert = false
-    @State private var showSuccess = false
-    @State private var isLoading = false
-
-    private var fullCode: String { code.joined() }
-
+    
+    @Environment(AppRouter.self) private var router
+    
+    
+    
     var body: some View {
-        VStack {
+        VStack() {
             VStack(spacing: 12) {
                 Text("Join Care Group")
                     .font(.largeTitle).bold()
@@ -22,7 +20,6 @@ struct JoinCareGroupView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .font(.title3)
             }.padding(.vertical, 12)
-
             VStack(spacing: 24) {
                 HStack(spacing: 12) {
                     ForEach(0..<6) { i in
@@ -33,8 +30,8 @@ struct JoinCareGroupView: View {
                                     code[i] = newValue.uppercased()
                                     if !newValue.isEmpty && i < 5 { focusedIndex = i + 1 }
                                 }
-                            }
-                        ))
+                            })
+                        )
                         .keyboardType(.asciiCapable)
                         .multilineTextAlignment(.center)
                         .font(.title).bold()
@@ -45,7 +42,10 @@ struct JoinCareGroupView: View {
                         .focused($focusedIndex, equals: i)
                     }
                 }
-                Button {
+                Button("Clear Code", action: {
+                    code = Array(repeating: "", count: 6)
+                }).foregroundStyle(Color.secondary)
+                Button(action: {
                     if let paste = UIPasteboard.general.string, paste.count == 6 {
                         for (idx, char) in paste.prefix(6).enumerated() {
                             code[idx] = String(char).uppercased()
@@ -53,8 +53,8 @@ struct JoinCareGroupView: View {
                     } else {
                         pasteAlert = true
                     }
-                } label: {
-                    HStack(spacing: 16) {
+                }){
+                    HStack (spacing: 16) {
                         Image(systemName: "document.on.clipboard.fill")
                         Text("Paste Code")
                     }.padding()
@@ -63,45 +63,32 @@ struct JoinCareGroupView: View {
                     Button("OK", role: .cancel) {}
                 }
             }
-            .padding(.vertical, 60)
-
-            if let error = session.careGroupError {
-                Text(error).foregroundStyle(.red).font(.caption)
-                    .frame(maxWidth: .infinity, alignment: .leading).padding(.bottom, 8)
+            .padding(.vertical, 146)
+            
+            
+            Button(action: {
+                // Handle join group
+                router.screen = .successJoin
+            }) {
+                Text("Join Care Group")
+                    .fontWeight(.medium)
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color.accentColor)
+                    .foregroundColor(.white)
+                    .clipShape(Capsule())
             }
-
-            Button {
-                isLoading = true
-                Task {
-                    await session.joinCareGroup(code: fullCode)
-                    isLoading = false
-                    if session.careGroupError == nil {
-                        showSuccess = true
-                    }
-                }
-            } label: {
-                Group {
-                    if isLoading {
-                        ProgressView().tint(.white)
-                    } else {
-                        Text("Join Care Group").fontWeight(.medium)
-                    }
-                }
-                .frame(maxWidth: .infinity).padding()
-                .background(Color.accentColor).foregroundColor(.white).clipShape(Capsule())
-            }
-            .disabled(isLoading || fullCode.count < 6)
+            .disabled(code.joined().count != 6)
             .padding(.bottom, 60)
-
             Spacer()
         }
         .padding()
-        .fullScreenCover(isPresented: $showSuccess) {
-            CareGroupJoinedView()
-        }
     }
 }
 
 #Preview {
-    JoinCareGroupView().environment(SessionStore())
+    let router = AppRouter()
+
+    return JoinCareGroupView()
+        .environment(router)
 }

@@ -8,7 +8,7 @@ import PhotosUI
 
 struct AddLogSheetView: View {
     @Environment(\.dismiss) private var dismiss
-    @Environment(SessionStore.self) private var session
+    @Environment(\.authService) private var authService
 
     @State private var logContent = ""
     @State private var selectedPhotos: [PhotosPickerItem] = []
@@ -27,7 +27,7 @@ struct AddLogSheetView: View {
 
                         VStack(alignment: .leading, spacing: 8) {
                             VStack(alignment: .leading) {
-                                Text(session.currentUser.name).fontWeight(.semibold)
+                                Text(authService.currentUser?.name ?? "Caregiver").fontWeight(.semibold)
                                 TextField("What's happening?", text: $logContent, axis: .vertical)
                                     .lineLimit(1...10)
                             }
@@ -69,13 +69,14 @@ struct AddLogSheetView: View {
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
+                        let user = authService.currentUser
                         let authorContact = CareContact(
-                            id: UUID(uuidString: session.currentUser.id.uuidString) ?? UUID(),
-                            careTeamID: session.currentCareTeam.id,
-                            name: session.currentUser.name,
-                            relationship: session.currentUser.role == .primaryCaregiver ? "Primary Caregiver" : "Helper",
-                            phone: session.currentUser.phone,
-                            email: session.currentUser.email
+                            id: user?.id ?? UUID(),
+                            careTeamID: SeedData.careTeamID,
+                            name: user?.name ?? "Caregiver",
+                            relationship: authService.currentRole == .primaryCaregiver ? "Primary Caregiver" : "Helper",
+                            phone: user?.phone ?? "",
+                            email: user?.email ?? ""
                         )
                         let newLog = Log(
                             author: authorContact,
@@ -124,5 +125,5 @@ struct AddLogSheetView: View {
 
 #Preview {
     AddLogSheetView { _ in }
-        .environment(SessionStore())
+        .environment(\.authService, AppDependencies.live.authService)
 }

@@ -12,12 +12,12 @@ private struct PatientRepositoryKey: EnvironmentKey {
     @MainActor static let defaultValue: any PatientRepository = MockPatientRepository()
 }
 
-private struct LogRepositoryKey: EnvironmentKey {
-    @MainActor static let defaultValue: any LogRepository = MockLogRepository()
+private struct AuthServiceKey: EnvironmentKey {
+    @MainActor static let defaultValue: any AuthService = MockAuthService()
 }
 
-private struct TaskRequestRepositoryKey: EnvironmentKey {
-    @MainActor static let defaultValue: any TaskRequestRepository = MockTaskRequestRepository()
+private struct LogRepositoryKey: EnvironmentKey {
+    @MainActor static let defaultValue: any LogRepository = MockLogRepository()
 }
 
 extension EnvironmentValues {
@@ -36,13 +36,13 @@ extension EnvironmentValues {
         set { self[PatientRepositoryKey.self] = newValue }
     }
 
+    var authService: any AuthService {
+        get { self[AuthServiceKey.self] }
+        set { self[AuthServiceKey.self] = newValue }
+    }
+
     var logRepository: any LogRepository {
         get { self[LogRepositoryKey.self] }
         set { self[LogRepositoryKey.self] = newValue }
-    }
-
-    var taskRequestRepository: any TaskRequestRepository {
-        get { self[TaskRequestRepositoryKey.self] }
-        set { self[TaskRequestRepositoryKey.self] = newValue }
     }
 }

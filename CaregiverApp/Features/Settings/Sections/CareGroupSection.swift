@@ -2,7 +2,6 @@ import SwiftUI
 
 struct CareGroupSection: View {
     @Environment(\.contactRepository) private var contactRepository
-    @Environment(SessionStore.self) private var session
 
     @State private var store: CareGroupStore?
     @State private var previewContacts: [CareContact] = []
@@ -53,7 +52,7 @@ struct CareGroupSection: View {
             }
         }
         .careGroupAddMemberSheets(
-            careTeamID: session.currentCareTeam.id,
+            careTeamID: SeedData.careTeamID,
             isShowingSystemContactPicker: $isShowingSystemContactPicker,
             importedDraft: $importedDraft
         ) { contact in

@@ -25,19 +25,54 @@ final class TimelineStore {
                 contactsByID[contact.id] = contact
             }
             let careTasks = try await taskRepository.fetchAllTasks()
-            tasks = careTasks.map { $0.timelinePresentation(contactsByID: contactsByID) }
+
+            var models: [TimelineTaskModel] = []
+            for task in careTasks {
+                let assignments = try await taskRepository.fetchAssignments(taskID: task.id)
+                let model = task.timelinePresentation(
+                    assignments: assignments,
+                    contactsByID: contactsByID
+                )
+                models.append(model)
+            }
+            tasks = models
         } catch {
             tasks = []
         }
     }
 
-    func save(_ careTask: CareTask) async throws {
+    func save(_ careTask: CareTask, assignments: [TaskAssignment] = []) async throws {
         try await taskRepository.saveTask(careTask)
+        for assignment in assignments {
+            try await taskRepository.addAssignment(assignment)
+        }
+        if assignments.isEmpty {
+            let autoAssignment = TaskAssignment(
+                taskID: careTask.id,
+                assigneeID: SeedData.primaryCaregiverID,
+                assignedByID: SeedData.primaryCaregiverID
+            )
+            try await taskRepository.addAssignment(autoAssignment)
+        }
         await load()
     }
 
-    func update(_ careTask: CareTask) async throws {
+    func update(_ careTask: CareTask, assignments: [TaskAssignment]? = nil) async throws {
         try await taskRepository.updateTask(careTask)
+        if let assignments {
+            let old = try await taskRepository.fetchAssignments(taskID: careTask.id)
+            for a in old {
+                try await taskRepository.removeAssignment(taskID: a.taskID, assigneeID: a.assigneeID)
+            }
+            for a in assignments {
+                try await taskRepository.addAssignment(a)
+            }
+        }
+        await load()
+    }
+
+    func deleteTask(id: UUID) async throws {
+        try await taskRepository.deleteTask(id: id)
         await load()
     }
 }

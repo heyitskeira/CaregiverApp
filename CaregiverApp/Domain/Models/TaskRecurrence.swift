@@ -1,5 +1,6 @@
 import Foundation
 
+/// Matches the Supabase `recurrence_frequency` enum type.
 enum TaskRecurrenceFrequency: String, Codable, Sendable, CaseIterable {
     case none
     case daily
@@ -9,31 +10,10 @@ enum TaskRecurrenceFrequency: String, Codable, Sendable, CaseIterable {
     case custom
 }
 
+/// Matches the Supabase `recurrence_unit` enum type.
 enum TaskRecurrenceUnit: String, Codable, Sendable, CaseIterable {
     case days
     case weeks
     case months
     case years
-}
-
-struct TaskRecurrence: Hashable, Codable, Sendable {
-    var frequency: TaskRecurrenceFrequency
-    var interval: Int
-    var unit: TaskRecurrenceUnit?
-
-    init(
-        frequency: TaskRecurrenceFrequency = .none,
-        interval: Int = 1,
-        unit: TaskRecurrenceUnit? = nil
-    ) {
-        self.frequency = frequency
-        self.interval = max(1, interval)
-        self.unit = unit
-    }
-
-    static let none = TaskRecurrence()
-
-    var repeats: Bool {
-        frequency != .none
-    }
 }

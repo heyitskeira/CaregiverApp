@@ -2,10 +2,16 @@ import Foundation
 import SwiftUI
 
 extension CareTask {
-    func timelinePresentation(contactsByID: [UUID: CareContact]) -> TimelineTaskModel {
+    func timelinePresentation(
+        assignments: [TaskAssignment],
+        contactsByID: [UUID: CareContact]
+    ) -> TimelineTaskModel {
         let calendar = Calendar.current
         let endDate = calendar.date(byAdding: .minute, value: durationMinutes, to: scheduledAt) ?? scheduledAt
+
+        let assigneeIDs = assignments.map { $0.assigneeID }
         let primaryAssignee = assigneeIDs.first.flatMap { contactsByID[$0] }
+        let backupAssignee = assigneeIDs.count > 1 ? assigneeIDs[1] : nil
         let isUnassigned = assigneeIDs.isEmpty
 
         return TimelineTaskModel(
@@ -14,22 +20,24 @@ extension CareTask {
             endDate: endDate,
             title: title,
             initials: primaryAssignee?.initials,
-            hasRepeatIcon: recurrence.repeats,
+            hasRepeatIcon: hasRecurrence,
             iconSystemName: isUnassigned ? "person.badge.plus" : nil,
             state: taskState,
             taskNote: instructions,
-            repeatOption: recurrence.repeatOption,
-            repeatInterval: recurrence.interval,
-            repeatUnit: recurrence.unit?.repeatUnit ?? .weeks,
-            assigneeIDs: assigneeIDs
+            repeatOption: recurrenceFrequency.toRepeatOption,
+            primaryAssigneeID: assigneeIDs.first,
+            backupAssigneeID: backupAssignee
         )
     }
 
     private var taskState: TaskState {
         switch status {
-        case .completed: return .completed
-        case .unassigned: return .pending
-        case .assigned: return .assigned
+        case .completed:
+            return .completed
+        case .unassigned:
+            return .pending
+        case .assigned:
+            return .assigned
         }
     }
 
@@ -44,6 +52,8 @@ extension CareTask {
             Int(timelineModel.endDate.timeIntervalSince(timelineModel.startDate) / 60)
         )
 
+        let hasAssignees = timelineModel.primaryAssigneeID != nil
+
         return CareTask(
             id: timelineModel.id,
             title: timelineModel.title,
@@ -52,65 +62,82 @@ extension CareTask {
             instructions: timelineModel.taskNote,
             careTeamID: careTeamID,
             patientID: patientID,
-            assigneeIDs: timelineModel.assigneeIDs,
-            status: timelineModel.isCompleted ? .completed : (timelineModel.assigneeIDs.isEmpty ? .unassigned : .assigned),
-            recurrence: TaskRecurrence.from(
-                repeatOption: timelineModel.repeatOption,
-                interval: timelineModel.repeatInterval,
-                unit: timelineModel.repeatUnit
-            ),
+            status: timelineModel.isCompleted ? .completed : (hasAssignees ? .assigned : .unassigned),
+            recurrenceFrequency: timelineModel.repeatOption.toRecurrenceFrequency,
             createdByID: createdByID
         )
     }
-}
 
-extension TaskRecurrence {
-    static func from(
-        repeatOption: RepeatOption,
-        interval: Int = 1,
-        unit: RepeatUnit = .weeks
-    ) -> TaskRecurrence {
-        switch repeatOption {
-        case .none: return .none
-        case .daily: return TaskRecurrence(frequency: .daily)
-        case .weekly: return TaskRecurrence(frequency: .weekly)
-        case .monthly: return TaskRecurrence(frequency: .monthly)
-        case .yearly: return TaskRecurrence(frequency: .yearly)
-        case .custom:
-            return TaskRecurrence(frequency: .custom, interval: interval, unit: unit.recurrenceUnit)
+    static func assignments(
+        from timelineModel: TimelineTaskModel,
+        assignedByID: UUID = SeedData.primaryCaregiverID
+    ) -> [TaskAssignment] {
+        var results: [TaskAssignment] = []
+        if let primary = timelineModel.primaryAssigneeID {
+            results.append(TaskAssignment(
+                taskID: timelineModel.id,
+                assigneeID: primary,
+                assignedByID: assignedByID
+            ))
         }
-    }
-
-    var repeatOption: RepeatOption {
-        switch frequency {
-        case .none: return .none
-        case .daily: return .daily
-        case .weekly: return .weekly
-        case .monthly: return .monthly
-        case .yearly: return .yearly
-        case .custom: return .custom
+        if let backup = timelineModel.backupAssigneeID {
+            results.append(TaskAssignment(
+                taskID: timelineModel.id,
+                assigneeID: backup,
+                assignedByID: assignedByID
+            ))
         }
+        return results
     }
 }
 
-private extension TaskRecurrenceUnit {
-    var repeatUnit: RepeatUnit {
+// MARK: - RepeatOption ↔ TaskRecurrenceFrequency conversion
+
+enum RepeatOption: String, CaseIterable {
+    case none = "Does not repeat"
+    case daily = "Every day"
+    case weekly = "Every week"
+    case monthly = "Every month"
+    case yearly = "Every year"
+    case custom = "Custom"
+
+    var toRecurrenceFrequency: TaskRecurrenceFrequency {
         switch self {
-        case .days: return .days
-        case .weeks: return .weeks
-        case .months: return .months
-        case .years: return .years
+        case .none: .none
+        case .daily: .daily
+        case .weekly: .weekly
+        case .monthly: .monthly
+        case .yearly: .yearly
+        case .custom: .custom
         }
     }
 }
 
-private extension RepeatUnit {
-    var recurrenceUnit: TaskRecurrenceUnit {
+enum RepeatUnit: String, CaseIterable {
+    case days = "Days"
+    case weeks = "Weeks"
+    case months = "Months"
+    case years = "Years"
+
+    var toRecurrenceUnit: TaskRecurrenceUnit {
         switch self {
-        case .days: return .days
-        case .weeks: return .weeks
-        case .months: return .months
-        case .years: return .years
+        case .days: .days
+        case .weeks: .weeks
+        case .months: .months
+        case .years: .years
+        }
+    }
+}
+
+extension TaskRecurrenceFrequency {
+    var toRepeatOption: RepeatOption {
+        switch self {
+        case .none: .none
+        case .daily: .daily
+        case .weekly: .weekly
+        case .monthly: .monthly
+        case .yearly: .yearly
+        case .custom: .custom
         }
     }
 }
