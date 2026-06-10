@@ -21,6 +21,13 @@ struct MainLogView: View {
             .padding()
         
         NavigationStack{
+            
+            Text("Logs")
+                .font(.largeTitle)
+                .bold()
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding()
+            
             Button {
                 showingAddLog = true
             } label:{
@@ -48,17 +55,17 @@ struct MainLogView: View {
             .padding(.vertical)
             
             if logs.isEmpty {
-                
+
                 Spacer()
-                
+
                 VStack(spacing: 10) {
-                    
+
                     Image(systemName: "square.and.pencil")
                         .font(.largeTitle)
                         .foregroundStyle(.secondary)
                         .fontWeight(.semibold)
                         .opacity(0.4)
-                    
+
                     VStack (spacing: 7){
                         Text("No activity yet")
                             .font(.headline)
@@ -72,20 +79,20 @@ struct MainLogView: View {
                             .foregroundStyle(.secondary)
                             .multilineTextAlignment(.center)
                     }
-                    
+
                 }
                 .padding()
-                
+
                 Spacer()
                 Spacer()
-                
+
             } else {
-                
+
                 ScrollView {
                     LazyVStack {
                         ForEach(logs) { log in
                             LogPost(log: log)
-                            
+
                             Divider()
                                 .padding(.vertical, 8)
                         }
