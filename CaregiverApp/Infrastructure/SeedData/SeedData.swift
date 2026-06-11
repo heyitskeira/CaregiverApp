@@ -12,10 +12,9 @@ enum SeedData {
     static let hospitalVisitTaskID = UUID(uuidString: "00000000-0000-0000-0000-000000000007")!
     static let eveningCheckTaskID = UUID(uuidString: "00000000-0000-0000-0000-000000000011")!
 
-    /// The contact ID to use for "My Tasks" filtering (simulates logged-in user's contact)
     static let myTasksViewerContactID = lilyID
 
-    // MARK: - Profiles (no role — role is on CareTeamMember)
+    // MARK: - Profiles
 
     static let primaryCaregiver = UserProfile(
         id: primaryCaregiverID,
@@ -32,7 +31,7 @@ enum SeedData {
         primaryCaregiverID: primaryCaregiverID
     )
 
-    // MARK: - Care Team Members (source of role truth)
+    // MARK: - Care Team Members
 
     static let primaryCaregiverMember = CareTeamMember(
         careTeamID: careTeamID,
@@ -93,7 +92,7 @@ enum SeedData {
         ),
     ]
 
-    // MARK: - Tasks (no assigneeIDs — assignments are separate)
+    // MARK: - Tasks
 
     static let sampleTasks: [CareTask] = [
         CareTask(
@@ -132,22 +131,14 @@ enum SeedData {
         ),
     ]
 
-    // MARK: - Assignments (separate table)
+    // MARK: - Assignments
 
     static let sampleAssignments: [TaskAssignment] = [
-        // "Give Meds" is assigned to Lily
         TaskAssignment(
             taskID: giveMedsTaskID,
             assigneeID: lilyID,
             assignedByID: primaryCaregiverID
         ),
-        // "Hospital Visit" — unassigned, auto-assigned to primary
-        TaskAssignment(
-            taskID: hospitalVisitTaskID,
-            assigneeID: primaryCaregiverID,
-            assignedByID: primaryCaregiverID
-        ),
-        // "Evening Check-in" assigned to James
         TaskAssignment(
             taskID: eveningCheckTaskID,
             assigneeID: jamesID,

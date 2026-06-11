@@ -28,6 +28,8 @@ final class TimelineStore {
                 contactsByID[contact.id] = contact
             }
             let careTasks = try await taskRepository.fetchAllTasks()
+            let allPendingRequests = try await taskRepository.fetchAllPendingRequests()
+            let requestedTaskIDs = Set(allPendingRequests.map { $0.taskID })
 
             var models: [TimelineTaskModel] = []
             for task in careTasks {
@@ -39,6 +41,9 @@ final class TimelineStore {
                 if let cached = attachmentsCache[task.id] {
                     model.attachments = cached
                     model.showDocumentIcon = !cached.isEmpty
+                }
+                if task.status == .unassigned && requestedTaskIDs.contains(task.id) {
+                    model.isRequested = true
                 }
                 models.append(model)
             }

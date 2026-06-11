@@ -7,6 +7,7 @@ import SwiftUI
 
 struct PatientdetailView: View {
     @Environment(\.patientRepository) private var patientRepository
+    @Environment(\.authService) private var authService
 
     @State var patientdetail: CareRecipient
     @State private var isShowingEditView = false
@@ -74,12 +75,13 @@ struct PatientdetailView: View {
             .navigationTitle("Patient Details")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar(content: {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Edit") {
-                        isShowingEditView = true
-                    }.tint(.accentColor)
+                if authService.currentRole.canEditTask {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button("Edit") {
+                            isShowingEditView = true
+                        }.tint(.accentColor)
+                    }
                 }
-
             })
         }
     }

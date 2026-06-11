@@ -18,9 +18,8 @@ final class MockAuthService: AuthService {
     }
 
     init() {
-        // Default: signed in as primary caregiver
-        self.currentUser = SeedData.primaryCaregiver
-        self.currentMembership = SeedData.primaryCaregiverMember
+        // Start as helper for demo
+        switchToHelperRole()
     }
 
     func signIn(email: String, password: String) async throws {

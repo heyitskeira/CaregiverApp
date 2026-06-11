@@ -2,6 +2,7 @@ import SwiftUI
 
 struct CareGroupListView: View {
     @Environment(\.contactRepository) private var contactRepository
+    @Environment(\.authService) private var authService
     @State private var store: CareGroupStore?
     @State private var searchText = ""
     @State private var isShowingSystemContactPicker = false
@@ -68,13 +69,15 @@ struct CareGroupListView: View {
         .navigationBarTitleDisplayMode(.inline)
         .searchable(text: $searchText, prompt: "Search contacts")
         .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    isShowingSystemContactPicker = true
-                } label: {
-                    Image(systemName: "plus")
+            if authService.currentRole.canEditTask {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        isShowingSystemContactPicker = true
+                    } label: {
+                        Image(systemName: "plus")
+                    }
+                    .accessibilityLabel("Add care group member from Contacts")
                 }
-                .accessibilityLabel("Add care group member from Contacts")
             }
         }
         .careGroupAddMemberSheets(

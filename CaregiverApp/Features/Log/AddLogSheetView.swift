@@ -110,22 +110,22 @@ struct AddLogSheetView: View {
                 }
             }
             .safeAreaInset(edge: .bottom) {
-                HStack {
+                HStack(spacing: 20) {
+                    Spacer()
+                    
                     PhotosPicker(
                         selection: $selectedPhotos,
                         maxSelectionCount: 5,
                         matching: .images
                     ) {
-                        Image(systemName: "photo").font(.title2).padding(16)
+                        Image(systemName: "photo")
+                            .font(.title2)
+                            .foregroundStyle(.white)
+                            .padding(12)
+                            .background(Color(hex: 0x2051B9)) // Brand Blue
+                            .clipShape(Circle())
+                            .shadow(radius: 2, y: 1)
                     }
-                    .background(.regularMaterial)
-                    .clipShape(Circle())
-                    .shadow(radius: 4)
-                    
-                    Image(systemName: "camera")
-                    
-                    Spacer()
-
                 }
                 .foregroundStyle(.primary)
                 .padding(.horizontal)

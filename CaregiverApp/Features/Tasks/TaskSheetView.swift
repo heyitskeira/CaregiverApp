@@ -23,6 +23,7 @@ struct TaskSheetView: View {
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.contactRepository) private var contactRepository
+    @Environment(\.authService) private var authService
 
     private let brandBlue = Color(hex: 0x2051B9)
 
@@ -229,14 +230,16 @@ struct TaskSheetView: View {
                     .disabled(taskName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     .opacity(taskName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.5 : 1)
                 } else {
-                    Button(action: { isEditing = true }) {
-                        Image(systemName: "pencil")
-                            .font(.body.weight(.semibold))
-                            .foregroundStyle(.white)
-                            .frame(width: 40, height: 40)
-                            .background(brandBlue.opacity(0.8))
-                            .clipShape(Circle())
-                            .overlay(Circle().stroke(Color.white.opacity(0.3), lineWidth: 1))
+                    if authService.currentRole.canEditTask {
+                        Button(action: { isEditing = true }) {
+                            Image(systemName: "pencil")
+                                .font(.body.weight(.semibold))
+                                .foregroundStyle(.white)
+                                .frame(width: 40, height: 40)
+                                .background(brandBlue.opacity(0.8))
+                                .clipShape(Circle())
+                                .overlay(Circle().stroke(Color.white.opacity(0.3), lineWidth: 1))
+                        }
                     }
                 }
             }

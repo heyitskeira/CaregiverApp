@@ -7,7 +7,7 @@ struct ProfileRootView: View {
     }
     @AppStorage("theme") private var theme = AppTheme.light.rawValue
     @State private var selectedLanguage: Language = .English
-    @Environment(SupabaseAuthService.self) private var authService
+    @Environment(\.authService) private var authService
     @Environment(AppRouter.self) private var router
     @State private var isSigningOut = false
     @State private var signOutError: String?
@@ -131,7 +131,7 @@ struct ProfileRootView: View {
 
 #Preview {
     ProfileRootView()
-        .environment(SupabaseAuthService())
+        .environment(\.authService, AppDependencies.live.authService)
         .environment(AppRouter())
         .environment(
             \.contactRepository,

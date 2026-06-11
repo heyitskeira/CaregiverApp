@@ -34,6 +34,7 @@ struct ContentView: View {
     @Environment(\.taskRepository) private var taskRepository
     @Environment(\.contactRepository) private var contactRepository
     @Environment(\.authService) private var authService
+    @Environment(\.logRepository) private var logRepository
 
     @State private var selectedTab: AppTab = .timeline
     @State private var showTaskSheet = false
@@ -98,6 +99,8 @@ struct ContentView: View {
                     selectedTab = oldValue
                     taskSheetMode = .create
                     showTaskSheet = true
+                } else if newValue == .timeline {
+                    reloadToken = UUID()
                 }
             }
             .task(id: reloadToken) {
@@ -221,6 +224,27 @@ struct ContentView: View {
         showCompletionPopup = false
         completingTask = nil
         persistTaskStatus(task)
+
+        Task {
+            let user = authService.currentUser
+            let authorContact = CareContact(
+                id: user?.id ?? UUID(),
+                careTeamID: SeedData.careTeamID,
+                name: user?.name ?? "Caregiver",
+                relationship: authService.currentRole == .primaryCaregiver ? "Primary Caregiver" : "Helper",
+                phone: user?.phone ?? "",
+                email: user?.email ?? ""
+            )
+            let logContent = notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                ? "✅ Completed: \(task.title)"
+                : "✅ Completed: \(task.title) — \(notes)"
+            let newLog = Log(
+                author: authorContact,
+                content: logContent,
+                images: images
+            )
+            try? await logRepository.saveLog(newLog)
+        }
     }
 
     private func cancelCompletion(_ task: TimelineTaskModel) {
@@ -244,4 +268,6 @@ struct ContentView: View {
             \.patientRepository,
             AppDependencies.live.patientRepository
         )
+        .environment(\.logRepository, AppDependencies.live.logRepository)
+        .environment(AppRouter())
 }

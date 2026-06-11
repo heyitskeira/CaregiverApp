@@ -8,25 +8,6 @@ struct InboxView: View {
     @State private var requests: [TaskRequest] = []
     @State private var tasksByID: [UUID: CareTask] = [:]
     @State private var isLoading = true
-    
-    @State private var tasks: [CareTask] = [
-            CareTask(
-                title: "Poopie Pants",
-                scheduledAt: .now,
-                durationMinutes: 120,
-                careTeamID: UUID(),
-                patientID: UUID(),
-                createdByID: UUID()
-            ),
-            CareTask(
-                title: "Puke Nuke",
-                scheduledAt: .now.addingTimeInterval(3600),
-                durationMinutes: 30,
-                careTeamID: UUID(),
-                patientID: UUID(),
-                createdByID: UUID()
-            )
-        ]
 
     private var displayDate: String {
         if Calendar.current.isDateInToday(Date()) {
